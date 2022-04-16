@@ -194,7 +194,7 @@ Tal y como hemos comentado en <<Introducción>> hay que hacer unos ligeros cambi
 Comenzamos cambiando las entidades generadas por el CLI de NestJS por esquemas.
 
 . Renombramos la carpeta `src/books/entities` por `src/books/schemas`
-. Renombramos el archivo `src/books/entities/book.entity.ts` por `src/books/entities/book.schema.ts`
+. Renombramos el archivo `src/books/entities/book.entity.ts` por `src/books/schemas/book.schema.ts`
 
 Para definir un esquema Mongoose hay que:
 
@@ -250,6 +250,7 @@ Para tipos no primitivos (como arrays, documentos o una combinación de ellos) h
 
 En el módulo tenemos que registrar el esquema para que cree la colección correspondiente en MongoDB. Esto lo haremos añadiendo el método `forFeature` de `MongooseModule` en el array `imports`.
 
+.Archivo `src/books/books.module.ts`
 [source, ts]
 ----
 import { Module } from '@nestjs/common';
@@ -327,7 +328,7 @@ export class CreateBookDto {
 <2> Definición de campo
 <3> Ejemplo como un array
 
-En Swagger UI, al desplegar el endpoint `POST /books` el ejemplo muestra los valores configurados con el decorador `@ApiProperty` de Swagger OpenAPI. También aparecen como plantilla si probásemos a introducir un libro. Aún no probaremos a insertar el libro porque está sin implementar el servicio. Recordamos que la implementación actual del servicio es la que ha generado el CLI de NestJS y se limita a mostrar que el servicio ha sido llamado. Hay que cambiar su implmentación para que interactúe con la base de datos.
+En Swagger UI, al desplegar el endpoint `POST /books` el ejemplo muestra los valores configurados con el decorador `@ApiProperty` de Swagger OpenAPI. También aparecen como plantilla si probásemos a introducir un libro. Aún no probaremos a insertar el libro porque está sin implementar el servicio. Recordamos que la implementación actual del servicio es la que ha generado el CLI de NestJS y se limita a mostrar que el servicio ha sido llamado. Hay que cambiar su implementación para que interactúe con la base de datos.
 
 image::dto-libro.png[]
 
@@ -422,7 +423,7 @@ En los servicios con Mongose inyectaremos un objeto _modelo_ que envuelve al _es
 
 En el controlador hay que hacer pocos cambios respecto al código generado por el CLI de NestJS. Sólo haremos cambios para
 
-* No convetrir a `number` el valor del `id` recibido como parámetro en la URL para las operaciones de buscar uno, modificar y eliminar.
+* No convertir a `number` el valor del `id` recibido como parámetro en la URL para las operaciones de buscar uno, modificar y eliminar.
 * Añadir decoradores de Swagger OpenAPI.
 
 .Archivo `src/books/books.controller.ts`
@@ -539,7 +540,7 @@ export class BooksController {
   }
 }
 ----
-<1> Uso de objetos `Request` en el controlador
+<1> Uso de objetos `Request` de `Express` en el controlador
 <2> Incluir un parámetro con un objeto `Request` para acceder a los parámetros de la consulta en la URL
 <3> Incluir el objeto `Request` en la llamada al servicio
 
@@ -588,7 +589,7 @@ export class BooksService {
   }
 }
 ----
-<1> Añadir la dependecia con `Request` de `Express` para acceder a los parámetros de la consulta de una `request`
+<1> Añadir la dependencia con `Request` de `Express` para acceder a los parámetros de la consulta de una `request`
 <2> Añadir un parámetro `Request` para acceder a los parámetros de la consulta pasados en la URL
 <3> Llamada al método de búsqueda de documentos pasándole los parámetros de la consulta
 <4> Configuración para evitar la inyección de código malicioso
@@ -681,6 +682,457 @@ Si lanzamos la petición con el `_id` del libro a modificar, los cambios se alma
 ----
 
 Para eliminar un libro basta con usar el endpoint `DELETE /book/{id}` con el `_id` del libro a eliminar.
+
+## Configuración del módulo de usuarios
+
+De acuerdo con el diagrama de <<Introducción>> tenemos objetos de dominio para libros y para los usuarios que realizan los comentarios sobre los libros. En esta sección nos centraremos en los usuarios.
+
+[TIP]
+====
+Es una buena técnica comenzar desarrollando inicialmente los módulos/clases/bloques de la API correspondiente a las clases del dominio que vamos a persistir en bases de datos. Una vez comprobado su funcionamiento por separado, se introducen las modificaciones en los esquemas Mongoose para incluir las relaciones a otros esquemas.
+====
+
+[NOTE]
+====
+Tal y como hemos comentado en <<Introducción>> hay que hacer unos ligeros cambios sobre el código generado para el `resource` con el CLI de NestJS. En concreto, habrá que cambiar las referencias a entidades por esquemas, y cambiar los identificadores de bases de datos numéricos a cadenas, ya que los `_id` de MongoDB son cadenas hexadecimales de 24 caracteres.
+====
+
+### Creación del esquema
+
+Comenzamos cambiando las entidades generadas por el CLI de NestJS por esquemas.
+
+. Renombramos la carpeta `src/users/entities` por `src/users/schemas`
+. Renombramos el archivo `src/users/entities/book.entity.ts` por `src/users/schemas/user.schema.ts`
+
+Para definir un esquema Mongoose hay que:
+
+* Añadir a la clase el decorador `@Schema()`
+* Definir en la clase cada campo de la colección y añadirle el decorador `@Prop()`
+
+El decorador `@Schema()` sobre una clase hace que se cree una colección en MongoDB con el nombre de la clase, pero en plural (añadiéndole una _"s"_). El decorador `@Prop()` sobre una propiedad de la clase añade a la colección un campo con el nombre de la propiedad.
+
+Para el caso de usuarios introduciremos un cambio respecto al ejemplo de libros. Para los usuarios, el `_id` será gestionado por nosotros y el ´_id` de cada usuario será su login, que es único y también valdrá.
+
+[NOTE]
+====
+En una colección MongoDB podemos optar por tener nuestros propios identificadores de documentos siempre y cuando controlemos su unicidad. En tal caso, cada vez que se haga una inserción habrá que proporcionar un valor único para `_id`.
+====
+
+.Archivo `src/users/schemas/user.schema.ts`
+[source, ts]
+----
+import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose'; <1>
+
+export type UserDocument = User & Document; <2>
+
+@Schema() <3>
+export class User {
+  @Prop() <4>
+  _id: string; <5>
+
+  @Prop()
+  name: string;
+
+  @Prop()
+  email: string;
+
+  @Prop()
+  country: string;
+}
+
+export const UserSchema = SchemaFactory.createForClass(User); <6>
+}
+----
+<1> Importación de `Document` desde Mongoose
+<2> Definición del tipo de un documento usuario
+<3> Decorador para crear una colección MongoDB para la clase
+<4> Decorador para añadir un campo a la colección
+<5> Gestión propia del `_id`. Guardaremos el login, y nos aseguraremos de que sea único.
+<6> Esquema Mongoose creado a partir de la clase `User`
+
+### Configuración del módulo
+
+Tal y como hemos comentado anteriormente, en el módulo tenemos que registrar el esquema para que cree la colección correspondiente en MongoDB. Esto lo haremos añadiendo el método `forFeature` de `MongooseModule` en el array `imports`.
+
+.Archivo 'src/users/users.module.ts'
+[source, ts]
+----
+import { Module } from '@nestjs/common';
+import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
+import { MongooseModule } from '@nestjs/mongoose';
+import { User, UserSchema } from './schemas/user.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]), <1>
+  ],
+  controllers: [UsersController],
+  providers: [UsersService],
+})
+export class UsersModule {}
+----
+<1> Registro del esquema de los usuario
+
+Al guardar los cambios, Mongoose crea la colección `users` en la base de datos.
+
+[NOTE]
+====
+Si la base de datos no estaba creada aún, al guardar el primer esquema, se crea la base de datos y la colección asociada al esquema creado.
+====
+
+### Creación del DTO
+
+Tal y como hemos comentado anteriormente, el DTO define la estructura de un objeto que se pasa en el cuerpo de una petición HTTP. Inicialmente, y de acuerdo con el diagrama de <<Introducción>>, los campos de los usuarios son los siguientes:
+
+* `id` como identificador del usuario.
+* `name` para el nombre del usuario
+* `email` para el email
+* `country` para el país del usuario
+
+.Archivo `src/users/dto/create-user.dto.ts`
+[source, ts]
+----
+import { ApiProperty } from '@nestjs/swagger';
+
+export class CreateUserDto {
+  @ApiProperty({ example: 'johndoe' }) <1>
+  readonly _id: string; <2>
+
+  @ApiProperty({ example: 'John Doe' })
+  readonly name: string;
+
+  @ApiProperty({ example: 'johndoe@gmail.com' })
+  readonly email: string;
+
+  @ApiProperty({ example: 'Spain' })
+  readonly country: string;
+}
+
+----
+<1> Decorador para definir una propiedad para la documentación en Swagger OpenAPI
+<2> Definición de campo
+
+En Swagger UI, al desplegar el endpoint `POST /users` el ejemplo muestra los valores configurados con el decorador `@ApiProperty` de Swagger OpenAPI. También aparecen como plantilla si probásemos a introducir un usuario. Aún no probaremos a insertar el usuario porque está sin implementar el servicio. Recordamos que la implementación actual del servicio es la que ha generado el CLI de NestJS y se limita a mostrar que el servicio ha sido llamado. Hay que cambiar su implementación para que interactúe con la base de datos.
+
+image::dto-usuario.png[]
+
+### Implementación del servicio
+
+Partimos del código generado por el CLI de NestJS para el servicio. Además de dar la implementación de la interacción con la base de datos mediante Mongoose habrá que:
+
+* Hacer que los métodos sean `async` ya que los métodos de acceso a la base de datos son asíncronos y devuelven promesas.
+* Configurar el tipo devuelto por los métodos.
+* Cambiar el parámetro `id` de `number` a `string` para que pueda tratar con el `_id` hexadecimal de MongoDB.
+
+[NOTE]
+====
+Recordamos que el CLI de NestJS genera el código de los métodos del servicio pensando en que la clave es de tipo numérico. Hay que cambiar el tipo del argumento `id` en los métodos `findOne`, `update` y `remove` a `string` para que sea válido para el `_id` de 24 caracteres hexadecimales de MongoDB.
+====
+
+Tal y como hemos comentado anteriormente, los métodos que usaremos de Mongoose serán
+
+* `create()` para la inserción de un documento.
+* `find()` para recuperar todo.
+* `findOne()` para recuperar un documento.
+* `findOneAndUpdate()` para la actualización de un documento.
+* `remove()` para la eliminación de un documento.
+
+.Archivo `src/users/users.service.ts`
+[source, ts]
+----
+import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
+
+@Injectable()
+export class UsersService {
+  constructor( <1>
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>, <2>
+  ) {}
+
+  async create(createUserDto: CreateUserDto): Promise<User> { <3>
+    return this.userModel.create(createUserDto); <4>
+  }
+
+  async findAll(): Promise<User[]> { <5>
+    return this.userModel.find().exec();
+  }
+
+  async findOne(id: string): Promise<User> { <6>
+    return this.userModel.findOne({ _id: id }).exec(); <7>
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto) { <8>
+    return this.userModel.findOneAndUpdate({ _id: id }, updateUserDto, { <9>
+      new: true, <10>
+    });
+  }
+
+  async remove(id: string) { <11>
+    return this.userModel.findByIdAndRemove({ _id: id }).exec(); <12>
+  }
+}
+----
+<1> Añadir un constructor
+<2> Definir un modelo para usuarios mediante inyección de dependencias
+<3> Cambiar a `async` y que devuelva `Promise<User>` con el usuario creado
+<4> Llamada al método de creación de documentos
+<5> Cambiar a `async` y que devuelva `Promise<User[]>` con la lista de usuarios
+<6> Cambio del tipo `id` a `string` para adaptarlo al `_id` de MongoDB, cambiar a `async` y que devuelva `Promise<User>` con el usuario buscado
+<7> Llamada al método de búsqueda de un documento por `id`
+<8> Cambio del tipo `id` a `string` para adaptarlo al `_id` de MongoDB, cambiar a `async` y que devuelva `Promise<User>` con el usuario modificado
+<9> Llamada al método de actualización de documentos por `id` pasándole el JSON con las modificaciones
+<10> Opción para que devuelva el objeto modificado 
+<11> Cambio del tipo `id` a `string` para adaptarlo al `_id` de MongoDB y cambiar a `async`
+<12> Llamada al método de eliminación de documentos por `id`
+
+[NOTE]
+====
+De forma predeterminada, el método `findOneAndUpdate` devuelve el objeto original, no el modificado. Para que devuelva el objeto ya modificado hay que pasar al método la opción de `{new: true}`.
+====
+
+### Modificación del controlador
+
+Tal y como hemos comentado anteriormente, en el controlador hay que hacer pocos cambios respecto al código generado por el CLI de NestJS. Sólo haremos cambios para
+
+* No convertir a `number` el valor del `id` recibido como parámetro en la URL para las operaciones de buscar uno, modificar y eliminar.
+* Añadir decoradores de Swagger OpenAPI.
+
+.Archivo `src/users/users.controller.ts`
+[source, ts]
+----
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ApiTags } from '@nestjs/swagger'; <1>
+
+@Controller('users')
+@ApiTags('user') <2>
+
+export class UsersController {
+  constructor(private readonly userService: UsersService) {}
+
+  @Post()
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.create(createUserDto);
+  }
+
+  @Get()
+  async findAll() {
+    return this.userService.findAll();
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.userService.findOne(id); <3>
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(id, updateUserDto); <4>
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.userService.remove(id); <5>
+  }
+}
+----
+<1> Decorador de OpenAPI para agrupar los endpoints en Swagger UI
+<2> Agrupar los endpoints para una etiqueta en Swagger UI 
+<3> Pasar al servicio el `id` como cadena porque el `_id` en MongoDB son cadenas hexadecimales
+<4> Pasar al servicio el `id` como cadena porque el `_id` en MongoDB son cadenas hexadecimales
+<5> Pasar al servicio el `id` como cadena porque el `_id` en MongoDB son cadenas hexadecimales
+
+La configuración del decorador `@ApiTags('user')` ha creado una categoría `user` en Swagger UI para los usuarios.
+
+image::categoria-user.png[]
+
+### Filtrado de resultados mediante parámetros en la URL
+
+Tal y como hemos comentado anteriormente, podemos añadir a nuestras peticiones de recuperación de datos opciones de filtrado. Lo haremos mediante parámetros de consulta en la URL (p.e. `?country=Spain`). Para ello, añadiremos un objeto `Request` de `Express` al método `findAll` para permitir el uso de parámetros en la URL para el filtrado de resultados.
+
+.Archivo `src/users/users.controller.ts`
+[source, ts]
+----
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express'; <1>
+
+@Controller('users')
+@ApiTags('user')
+
+export class UsersController {
+  constructor(private readonly userService: UsersService) {}
+
+  @Post()
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.create(createUserDto);
+  }
+
+  @Get()
+  async findAll(@Req() request: Request) { <2>
+    return this.userService.findAll(request); <3>
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.userService.findOne(id);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(id, updateUserDto);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.userService.remove(id);
+  }
+}
+----
+<1> Uso de objetos `Request` de `Express` en el controlador
+<2> Incluir un parámetro con un objeto `Request` para acceder a los parámetros de la consulta en la URL
+<3> Incluir el objeto `Request` en la llamada al servicio
+
+Ahora introducimos los cambios en el servicio para permitir acceder a los parámetros introducidos en la URL para filtrar y cambiamos la implementación del método `findAll` para que use la búsqueda con filtros.
+
+.Archivo `src/users/users.service.ts`
+[source, ts]
+----
+import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
+import { Request } from 'express'; <1>
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model<UserDocument>,
+  ) {}
+
+  async create(createUserDto: CreateUserDto): Promise<User> {
+    return this.userModel.create(createUserDto);
+  }
+
+  async findAll(request: Request): Promise<User[]> { <2>
+    return this.userModel
+      .find(request.query) <3>
+      .setOptions({ sanitizeFilter: true }) <4>
+      .exec();
+  }
+
+  async findOne(id: string): Promise<User> {
+    return this.userModel.findOne({ _id: id }).exec();
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto): Promise<User> {
+    return this.userModel.findOneAndUpdate({ _id: id }, updateUserDto, {
+      new: true,
+    });
+  }
+
+  async remove(id: string) {
+    return this.userModel.findByIdAndRemove({ _id: id }).exec();
+  }
+}
+----
+<1> Añadir la dependencia con `Request` de `Express` para acceder a los parámetros de la consulta de una `request`
+<2> Añadir un parámetro `Request` para acceder a los parámetros de la consulta pasados en la URL
+<3> Llamada al método de búsqueda de documentos pasándole los parámetros de la consulta
+<4> Configuración para evitar la inyección de código malicioso
+
+[INFO]
+====
+`request.query` devuelve una lista clave-valor con cada uno de los campos de filtrado y su valor correspondiente introducidos en la URL.
+====
+
+### Prueba de los endpoints
+
+Probamos el endpoint `POST /users` con los valores del ejemplo
+
+image::user-post.png[]
+
+El resultado devuelto será similar a este, en el que se muestran los datos guardados en la base de datos junto al `_id` generado por MongoDB.
+
+[source, json]
+----
+{
+  "_id": "johndoe",
+  "name": "John Doe",
+  "email": "johndoe@gmail.com",
+  "country": "Spain",
+  "__v": 0
+}
+----
+
+Tras la inserción podemos probar que se recuperan correctamente los usuarios con el endpoint `GET /users`. Para probar el endpoint que devuelve un usuario concreto, desplegaremos en Swagger UI el endpoint `GET /users/{:id}`, pulsamemos `Try it out` para probar el endpoint e introduciremos el `_id` del usuario creado (`johndoe`). Tras pulsar `Execute` vemos que se recupera correctamente el usuario.
+
+image::user-findone.png[]
+
+Para probar el filtrado comprobaremos con una condición de filtrado para usuarios de España. Para ello, en la URL introduciremos la condición de esta forma
+
+[source, code]
+----
+$ http://localhost:3000/users?country=spain
+----
+
+Para hacer esta prueba necesitaremos un cliente HTTP o bien introducir la URL en un navegador.
+
+image::user-query-params.png[]
+
+Para hacer una modificación se pasará un JSON en el cuerpo de la petición con los cambios a realizar. Por ejemplo, para cambiar el país a Italia pasaríamos este JSON en el cuerpo de la petición al endpoint `PATCH /users/{id}`
+
+[source, json]
+----
+{
+  "country": "Italy"
+}
+----
+
+Si lanzamos la petición con el `_id` del usuario a modificar, los cambios se almacenarán en la base de datos y nos devolverá los datos actualizados con país a Italia.
+
+[source, json]
+----
+{
+  "_id": "johndoe",
+  "name": "John Doe",
+  "email": "johndoe@gmail.com",
+  "country": "Italy",
+  "__v": 0
+}
+----
+
+Para eliminar un usuario basta con usar el endpoint `DELETE /users/{id}` con el `_id` del usuario a eliminar.
 
 // (Entrar en modo no numerado de apartados)
 :numbered!: 

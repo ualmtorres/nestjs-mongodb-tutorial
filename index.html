@@ -461,6 +461,17 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#trueprueba-de-los-endpoints">4.7. Prueba de los endpoints</a></li>
 </ul>
 </li>
+<li><a href="#trueconfiguración-del-módulo-de-usuarios">5. Configuración del módulo de usuarios</a>
+<ul class="sectlevel2">
+<li><a href="#truecreación-del-esquema-2">5.1. Creación del esquema</a></li>
+<li><a href="#trueconfiguración-del-módulo-2">5.2. Configuración del módulo</a></li>
+<li><a href="#truecreación-del-dto-2">5.3. Creación del DTO</a></li>
+<li><a href="#trueimplementación-del-servicio-2">5.4. Implementación del servicio</a></li>
+<li><a href="#truemodificación-del-controlador-2">5.5. Modificación del controlador</a></li>
+<li><a href="#truefiltrado-de-resultados-mediante-parámetros-en-la-url-2">5.6. Filtrado de resultados mediante parámetros en la URL</a></li>
+<li><a href="#trueprueba-de-los-endpoints-2">5.7. Prueba de los endpoints</a></li>
+</ul>
+</li>
 <li><a href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose">Anexo I. Configuración de MongoDB local con Docker Compose</a></li>
 <li><a href="#trueanexo-ii-validaciones-en-mongoose">Anexo II. Validaciones en Mongoose</a></li>
 <li><a href="#trueanexo-iii-rechazo-de-peticiones-con-_id-inválido">Anexo III. Rechazo de peticiones con <code>_id</code> inválido</a></li>
@@ -758,7 +769,7 @@ export class AppModule {}</code></pre>
 <p>Renombramos la carpeta <code>src/books/entities</code> por <code>src/books/schemas</code></p>
 </li>
 <li>
-<p>Renombramos el archivo <code>src/books/entities/book.entity.ts</code> por <code>src/books/entities/book.schema.ts</code></p>
+<p>Renombramos el archivo <code>src/books/entities/book.entity.ts</code> por <code>src/books/schemas/book.schema.ts</code></p>
 </li>
 </ol>
 </div>
@@ -859,6 +870,7 @@ export const BookSchema = SchemaFactory.createForClass(Book); <i class="conum" d
 <p>En el módulo tenemos que registrar el esquema para que cree la colección correspondiente en MongoDB. Esto lo haremos añadiendo el método <code>forFeature</code> de <code>MongooseModule</code> en el array <code>imports</code>.</p>
 </div>
 <div class="listingblock">
+<div class="title">Archivo <code>src/books/books.module.ts</code></div>
 <div class="content">
 <pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Module } from '@nestjs/common';
 import { BooksService } from './books.service';
@@ -987,7 +999,7 @@ export class CreateBookDto {
 </table>
 </div>
 <div class="paragraph">
-<p>En Swagger UI, al desplegar el endpoint <code>POST /books</code> el ejemplo muestra los valores configurados con el decorador <code>@ApiProperty</code> de Swagger OpenAPI. También aparecen como plantilla si probásemos a introducir un libro. Aún no probaremos a insertar el libro porque está sin implementar el servicio. Recordamos que la implementación actual del servicio es la que ha generado el CLI de NestJS y se limita a mostrar que el servicio ha sido llamado. Hay que cambiar su implmentación para que interactúe con la base de datos.</p>
+<p>En Swagger UI, al desplegar el endpoint <code>POST /books</code> el ejemplo muestra los valores configurados con el decorador <code>@ApiProperty</code> de Swagger OpenAPI. También aparecen como plantilla si probásemos a introducir un libro. Aún no probaremos a insertar el libro porque está sin implementar el servicio. Recordamos que la implementación actual del servicio es la que ha generado el CLI de NestJS y se limita a mostrar que el servicio ha sido llamado. Hay que cambiar su implementación para que interactúe con la base de datos.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -1178,7 +1190,7 @@ export class BooksService {
 <div class="ulist">
 <ul>
 <li>
-<p>No convetrir a <code>number</code> el valor del <code>id</code> recibido como parámetro en la URL para las operaciones de buscar uno, modificar y eliminar.</p>
+<p>No convertir a <code>number</code> el valor del <code>id</code> recibido como parámetro en la URL para las operaciones de buscar uno, modificar y eliminar.</p>
 </li>
 <li>
 <p>Añadir decoradores de Swagger OpenAPI.</p>
@@ -1329,7 +1341,7 @@ export class BooksController {
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Uso de objetos <code>Request</code> en el controlador</td>
+<td>Uso de objetos <code>Request</code> de <code>Express</code> en el controlador</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
@@ -1392,7 +1404,7 @@ export class BooksService {
 <table>
 <tr>
 <td><i class="conum" data-value="1"></i><b>1</b></td>
-<td>Añadir la dependecia con <code>Request</code> de <code>Express</code> para acceder a los parámetros de la consulta de una <code>request</code></td>
+<td>Añadir la dependencia con <code>Request</code> de <code>Express</code> para acceder a los parámetros de la consulta de una <code>request</code></td>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
@@ -1523,6 +1535,741 @@ export class BooksService {
 </div>
 </div>
 <div class="sect1">
+<h2 id="trueconfiguración-del-módulo-de-usuarios"><a class="anchor" href="#trueconfiguración-del-módulo-de-usuarios"></a>5. Configuración del módulo de usuarios</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>De acuerdo con el diagrama de <a href="#trueintroducción">Introducción</a> tenemos objetos de dominio para libros y para los usuarios que realizan los comentarios sobre los libros. En esta sección nos centraremos en los usuarios.</p>
+</div>
+<div class="admonitionblock tip">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-tip" title="Tip"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Es una buena técnica comenzar desarrollando inicialmente los módulos/clases/bloques de la API correspondiente a las clases del dominio que vamos a persistir en bases de datos. Una vez comprobado su funcionamiento por separado, se introducen las modificaciones en los esquemas Mongoose para incluir las relaciones a otros esquemas.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Tal y como hemos comentado en <a href="#trueintroducción">Introducción</a> hay que hacer unos ligeros cambios sobre el código generado para el <code>resource</code> con el CLI de NestJS. En concreto, habrá que cambiar las referencias a entidades por esquemas, y cambiar los identificadores de bases de datos numéricos a cadenas, ya que los <code>_id</code> de MongoDB son cadenas hexadecimales de 24 caracteres.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="sect2">
+<h3 id="truecreación-del-esquema-2"><a class="anchor" href="#truecreación-del-esquema-2"></a>5.1. Creación del esquema</h3>
+<div class="paragraph">
+<p>Comenzamos cambiando las entidades generadas por el CLI de NestJS por esquemas.</p>
+</div>
+<div class="olist arabic">
+<ol class="arabic">
+<li>
+<p>Renombramos la carpeta <code>src/users/entities</code> por <code>src/users/schemas</code></p>
+</li>
+<li>
+<p>Renombramos el archivo <code>src/users/entities/book.entity.ts</code> por <code>src/users/schemas/user.schema.ts</code></p>
+</li>
+</ol>
+</div>
+<div class="paragraph">
+<p>Para definir un esquema Mongoose hay que:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Añadir a la clase el decorador <code>@Schema()</code></p>
+</li>
+<li>
+<p>Definir en la clase cada campo de la colección y añadirle el decorador <code>@Prop()</code></p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>El decorador <code>@Schema()</code> sobre una clase hace que se cree una colección en MongoDB con el nombre de la clase, pero en plural (añadiéndole una <em>"s"</em>). El decorador <code>@Prop()</code> sobre una propiedad de la clase añade a la colección un campo con el nombre de la propiedad.</p>
+</div>
+<div class="paragraph">
+<p>Para el caso de usuarios introduciremos un cambio respecto al ejemplo de libros. Para los usuarios, el <code>_id</code> será gestionado por nosotros y el ´_id` de cada usuario será su login, que es único y también valdrá.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>En una colección MongoDB podemos optar por tener nuestros propios identificadores de documentos siempre y cuando controlemos su unicidad. En tal caso, cada vez que se haga una inserción habrá que proporcionar un valor único para <code>_id</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/users/schemas/user.schema.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose'; <i class="conum" data-value="1"></i><b>(1)</b>
+
+export type UserDocument = User &amp; Document; <i class="conum" data-value="2"></i><b>(2)</b>
+
+@Schema() <i class="conum" data-value="3"></i><b>(3)</b>
+export class User {
+  @Prop() <i class="conum" data-value="4"></i><b>(4)</b>
+  _id: string; <i class="conum" data-value="5"></i><b>(5)</b>
+
+  @Prop()
+  name: string;
+
+  @Prop()
+  email: string;
+
+  @Prop()
+  country: string;
+}
+
+export const UserSchema = SchemaFactory.createForClass(User); <i class="conum" data-value="6"></i><b>(6)</b>
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Importación de <code>Document</code> desde Mongoose</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Definición del tipo de un documento usuario</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Decorador para crear una colección MongoDB para la clase</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Decorador para añadir un campo a la colección</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Gestión propia del <code>_id</code>. Guardaremos el login, y nos aseguraremos de que sea único.</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Esquema Mongoose creado a partir de la clase <code>User</code></td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trueconfiguración-del-módulo-2"><a class="anchor" href="#trueconfiguración-del-módulo-2"></a>5.2. Configuración del módulo</h3>
+<div class="paragraph">
+<p>Tal y como hemos comentado anteriormente, en el módulo tenemos que registrar el esquema para que cree la colección correspondiente en MongoDB. Esto lo haremos añadiendo el método <code>forFeature</code> de <code>MongooseModule</code> en el array <code>imports</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo 'src/users/users.module.ts'</div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Module } from '@nestjs/common';
+import { UsersService } from './users.service';
+import { UsersController } from './users.controller';
+import { MongooseModule } from '@nestjs/mongoose';
+import { User, UserSchema } from './schemas/user.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: User.name, schema: UserSchema }]), <i class="conum" data-value="1"></i><b>(1)</b>
+  ],
+  controllers: [UsersController],
+  providers: [UsersService],
+})
+export class UsersModule {}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Registro del esquema de los usuario</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Al guardar los cambios, Mongoose crea la colección <code>users</code> en la base de datos.</p>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Si la base de datos no estaba creada aún, al guardar el primer esquema, se crea la base de datos y la colección asociada al esquema creado.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="truecreación-del-dto-2"><a class="anchor" href="#truecreación-del-dto-2"></a>5.3. Creación del DTO</h3>
+<div class="paragraph">
+<p>Tal y como hemos comentado anteriormente, el DTO define la estructura de un objeto que se pasa en el cuerpo de una petición HTTP. Inicialmente, y de acuerdo con el diagrama de <a href="#trueintroducción">Introducción</a>, los campos de los usuarios son los siguientes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>id</code> como identificador del usuario.</p>
+</li>
+<li>
+<p><code>name</code> para el nombre del usuario</p>
+</li>
+<li>
+<p><code>email</code> para el email</p>
+</li>
+<li>
+<p><code>country</code> para el país del usuario</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/users/dto/create-user.dto.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { ApiProperty } from '@nestjs/swagger';
+
+export class CreateUserDto {
+  @ApiProperty({ example: 'johndoe' }) <i class="conum" data-value="1"></i><b>(1)</b>
+  readonly _id: string; <i class="conum" data-value="2"></i><b>(2)</b>
+
+  @ApiProperty({ example: 'John Doe' })
+  readonly name: string;
+
+  @ApiProperty({ example: 'johndoe@gmail.com' })
+  readonly email: string;
+
+  @ApiProperty({ example: 'Spain' })
+  readonly country: string;
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Decorador para definir una propiedad para la documentación en Swagger OpenAPI</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Definición de campo</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>En Swagger UI, al desplegar el endpoint <code>POST /users</code> el ejemplo muestra los valores configurados con el decorador <code>@ApiProperty</code> de Swagger OpenAPI. También aparecen como plantilla si probásemos a introducir un usuario. Aún no probaremos a insertar el usuario porque está sin implementar el servicio. Recordamos que la implementación actual del servicio es la que ha generado el CLI de NestJS y se limita a mostrar que el servicio ha sido llamado. Hay que cambiar su implementación para que interactúe con la base de datos.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/dto-usuario.png" alt="dto usuario">
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trueimplementación-del-servicio-2"><a class="anchor" href="#trueimplementación-del-servicio-2"></a>5.4. Implementación del servicio</h3>
+<div class="paragraph">
+<p>Partimos del código generado por el CLI de NestJS para el servicio. Además de dar la implementación de la interacción con la base de datos mediante Mongoose habrá que:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Hacer que los métodos sean <code>async</code> ya que los métodos de acceso a la base de datos son asíncronos y devuelven promesas.</p>
+</li>
+<li>
+<p>Configurar el tipo devuelto por los métodos.</p>
+</li>
+<li>
+<p>Cambiar el parámetro <code>id</code> de <code>number</code> a <code>string</code> para que pueda tratar con el <code>_id</code> hexadecimal de MongoDB.</p>
+</li>
+</ul>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Recordamos que el CLI de NestJS genera el código de los métodos del servicio pensando en que la clave es de tipo numérico. Hay que cambiar el tipo del argumento <code>id</code> en los métodos <code>findOne</code>, <code>update</code> y <code>remove</code> a <code>string</code> para que sea válido para el <code>_id</code> de 24 caracteres hexadecimales de MongoDB.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Tal y como hemos comentado anteriormente, los métodos que usaremos de Mongoose serán</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>create()</code> para la inserción de un documento.</p>
+</li>
+<li>
+<p><code>find()</code> para recuperar todo.</p>
+</li>
+<li>
+<p><code>findOne()</code> para recuperar un documento.</p>
+</li>
+<li>
+<p><code>findOneAndUpdate()</code> para la actualización de un documento.</p>
+</li>
+<li>
+<p><code>remove()</code> para la eliminación de un documento.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/users/users.service.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
+
+@Injectable()
+export class UsersService {
+  constructor( <i class="conum" data-value="1"></i><b>(1)</b>
+    @InjectModel(User.name) private readonly userModel: Model&lt;UserDocument&gt;, <i class="conum" data-value="2"></i><b>(2)</b>
+  ) {}
+
+  async create(createUserDto: CreateUserDto): Promise&lt;User&gt; { <i class="conum" data-value="3"></i><b>(3)</b>
+    return this.userModel.create(createUserDto); <i class="conum" data-value="4"></i><b>(4)</b>
+  }
+
+  async findAll(): Promise&lt;User[]&gt; { <i class="conum" data-value="5"></i><b>(5)</b>
+    return this.userModel.find().exec();
+  }
+
+  async findOne(id: string): Promise&lt;User&gt; { <i class="conum" data-value="6"></i><b>(6)</b>
+    return this.userModel.findOne({ _id: id }).exec(); <i class="conum" data-value="7"></i><b>(7)</b>
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto) { <i class="conum" data-value="8"></i><b>(8)</b>
+    return this.userModel.findOneAndUpdate({ _id: id }, updateUserDto, { <i class="conum" data-value="9"></i><b>(9)</b>
+      new: true, <i class="conum" data-value="10"></i><b>(10)</b>
+    });
+  }
+
+  async remove(id: string) { <i class="conum" data-value="11"></i><b>(11)</b>
+    return this.userModel.findByIdAndRemove({ _id: id }).exec(); <i class="conum" data-value="12"></i><b>(12)</b>
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Añadir un constructor</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Definir un modelo para usuarios mediante inyección de dependencias</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Cambiar a <code>async</code> y que devuelva <code>Promise&lt;User&gt;</code> con el usuario creado</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Llamada al método de creación de documentos</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Cambiar a <code>async</code> y que devuelva <code>Promise&lt;User[]&gt;</code> con la lista de usuarios</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="6"></i><b>6</b></td>
+<td>Cambio del tipo <code>id</code> a <code>string</code> para adaptarlo al <code>_id</code> de MongoDB, cambiar a <code>async</code> y que devuelva <code>Promise&lt;User&gt;</code> con el usuario buscado</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="7"></i><b>7</b></td>
+<td>Llamada al método de búsqueda de un documento por <code>id</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="8"></i><b>8</b></td>
+<td>Cambio del tipo <code>id</code> a <code>string</code> para adaptarlo al <code>_id</code> de MongoDB, cambiar a <code>async</code> y que devuelva <code>Promise&lt;User&gt;</code> con el usuario modificado</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="9"></i><b>9</b></td>
+<td>Llamada al método de actualización de documentos por <code>id</code> pasándole el JSON con las modificaciones</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="10"></i><b>10</b></td>
+<td>Opción para que devuelva el objeto modificado</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="11"></i><b>11</b></td>
+<td>Cambio del tipo <code>id</code> a <code>string</code> para adaptarlo al <code>_id</code> de MongoDB y cambiar a <code>async</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="12"></i><b>12</b></td>
+<td>Llamada al método de eliminación de documentos por <code>id</code></td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>De forma predeterminada, el método <code>findOneAndUpdate</code> devuelve el objeto original, no el modificado. Para que devuelva el objeto ya modificado hay que pasar al método la opción de <code>{new: true}</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="truemodificación-del-controlador-2"><a class="anchor" href="#truemodificación-del-controlador-2"></a>5.5. Modificación del controlador</h3>
+<div class="paragraph">
+<p>Tal y como hemos comentado anteriormente, en el controlador hay que hacer pocos cambios respecto al código generado por el CLI de NestJS. Sólo haremos cambios para</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>No convertir a <code>number</code> el valor del <code>id</code> recibido como parámetro en la URL para las operaciones de buscar uno, modificar y eliminar.</p>
+</li>
+<li>
+<p>Añadir decoradores de Swagger OpenAPI.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/users/users.controller.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ApiTags } from '@nestjs/swagger'; <i class="conum" data-value="1"></i><b>(1)</b>
+
+@Controller('users')
+@ApiTags('user') <i class="conum" data-value="2"></i><b>(2)</b>
+
+export class UsersController {
+  constructor(private readonly userService: UsersService) {}
+
+  @Post()
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.create(createUserDto);
+  }
+
+  @Get()
+  async findAll() {
+    return this.userService.findAll();
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.userService.findOne(id); <i class="conum" data-value="3"></i><b>(3)</b>
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(id, updateUserDto); <i class="conum" data-value="4"></i><b>(4)</b>
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.userService.remove(id); <i class="conum" data-value="5"></i><b>(5)</b>
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Decorador de OpenAPI para agrupar los endpoints en Swagger UI</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Agrupar los endpoints para una etiqueta en Swagger UI</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Pasar al servicio el <code>id</code> como cadena porque el <code>_id</code> en MongoDB son cadenas hexadecimales</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Pasar al servicio el <code>id</code> como cadena porque el <code>_id</code> en MongoDB son cadenas hexadecimales</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="5"></i><b>5</b></td>
+<td>Pasar al servicio el <code>id</code> como cadena porque el <code>_id</code> en MongoDB son cadenas hexadecimales</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>La configuración del decorador <code>@ApiTags('user')</code> ha creado una categoría <code>user</code> en Swagger UI para los usuarios.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/categoria-user.png" alt="categoria user">
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="truefiltrado-de-resultados-mediante-parámetros-en-la-url-2"><a class="anchor" href="#truefiltrado-de-resultados-mediante-parámetros-en-la-url-2"></a>5.6. Filtrado de resultados mediante parámetros en la URL</h3>
+<div class="paragraph">
+<p>Tal y como hemos comentado anteriormente, podemos añadir a nuestras peticiones de recuperación de datos opciones de filtrado. Lo haremos mediante parámetros de consulta en la URL (p.e. <code>?country=Spain</code>). Para ello, añadiremos un objeto <code>Request</code> de <code>Express</code> al método <code>findAll</code> para permitir el uso de parámetros en la URL para el filtrado de resultados.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/users/users.controller.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Req
+} from '@nestjs/common';
+import { UsersService } from './users.service';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express'; <i class="conum" data-value="1"></i><b>(1)</b>
+
+@Controller('users')
+@ApiTags('user')
+
+export class UsersController {
+  constructor(private readonly userService: UsersService) {}
+
+  @Post()
+  async create(@Body() createUserDto: CreateUserDto) {
+    return this.userService.create(createUserDto);
+  }
+
+  @Get()
+  async findAll(@Req() request: Request) { <i class="conum" data-value="2"></i><b>(2)</b>
+    return this.userService.findAll(request); <i class="conum" data-value="3"></i><b>(3)</b>
+  }
+
+  @Get(':id')
+  async findOne(@Param('id') id: string) {
+    return this.userService.findOne(id);
+  }
+
+  @Patch(':id')
+  async update(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+    return this.userService.update(id, updateUserDto);
+  }
+
+  @Delete(':id')
+  async remove(@Param('id') id: string) {
+    return this.userService.remove(id);
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Uso de objetos <code>Request</code> de <code>Express</code> en el controlador</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Incluir un parámetro con un objeto <code>Request</code> para acceder a los parámetros de la consulta en la URL</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Incluir el objeto <code>Request</code> en la llamada al servicio</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Ahora introducimos los cambios en el servicio para permitir acceder a los parámetros introducidos en la URL para filtrar y cambiamos la implementación del método <code>findAll</code> para que use la búsqueda con filtros.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/users/users.service.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Injectable } from '@nestjs/common';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Model } from 'mongoose';
+import { User, UserDocument } from './schemas/user.schema';
+import { Request } from 'express'; <i class="conum" data-value="1"></i><b>(1)</b>
+
+@Injectable()
+export class UsersService {
+  constructor(
+    @InjectModel(User.name) private readonly userModel: Model&lt;UserDocument&gt;,
+  ) {}
+
+  async create(createUserDto: CreateUserDto): Promise&lt;User&gt; {
+    return this.userModel.create(createUserDto);
+  }
+
+  async findAll(request: Request): Promise&lt;User[]&gt; { <i class="conum" data-value="2"></i><b>(2)</b>
+    return this.userModel
+      .find(request.query) <i class="conum" data-value="3"></i><b>(3)</b>
+      .setOptions({ sanitizeFilter: true }) <i class="conum" data-value="4"></i><b>(4)</b>
+      .exec();
+  }
+
+  async findOne(id: string): Promise&lt;User&gt; {
+    return this.userModel.findOne({ _id: id }).exec();
+  }
+
+  async update(id: string, updateUserDto: UpdateUserDto): Promise&lt;User&gt; {
+    return this.userModel.findOneAndUpdate({ _id: id }, updateUserDto, {
+      new: true,
+    });
+  }
+
+  async remove(id: string) {
+    return this.userModel.findByIdAndRemove({ _id: id }).exec();
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Añadir la dependencia con <code>Request</code> de <code>Express</code> para acceder a los parámetros de la consulta de una <code>request</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Añadir un parámetro <code>Request</code> para acceder a los parámetros de la consulta pasados en la URL</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Llamada al método de búsqueda de documentos pasándole los parámetros de la consulta</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Configuración para evitar la inyección de código malicioso</td>
+</tr>
+</table>
+</div>
+<div class="exampleblock">
+<div class="content">
+<div class="paragraph">
+<p><code>request.query</code> devuelve una lista clave-valor con cada uno de los campos de filtrado y su valor correspondiente introducidos en la URL.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trueprueba-de-los-endpoints-2"><a class="anchor" href="#trueprueba-de-los-endpoints-2"></a>5.7. Prueba de los endpoints</h3>
+<div class="paragraph">
+<p>Probamos el endpoint <code>POST /users</code> con los valores del ejemplo</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/user-post.png" alt="user post">
+</div>
+</div>
+<div class="paragraph">
+<p>El resultado devuelto será similar a este, en el que se muestran los datos guardados en la base de datos junto al <code>_id</code> generado por MongoDB.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+  "_id": "johndoe",
+  "name": "John Doe",
+  "email": "johndoe@gmail.com",
+  "country": "Spain",
+  "__v": 0
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Tras la inserción podemos probar que se recuperan correctamente los usuarios con el endpoint <code>GET /users</code>. Para probar el endpoint que devuelve un usuario concreto, desplegaremos en Swagger UI el endpoint <code>GET /users/{:id}</code>, pulsamemos <code>Try it out</code> para probar el endpoint e introduciremos el <code>_id</code> del usuario creado (<code>johndoe</code>). Tras pulsar <code>Execute</code> vemos que se recupera correctamente el usuario.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/user-findone.png" alt="user findone">
+</div>
+</div>
+<div class="paragraph">
+<p>Para probar el filtrado comprobaremos con una condición de filtrado para usuarios de España. Para ello, en la URL introduciremos la condición de esta forma</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="code" class="language-code hljs">$ http://localhost:3000/users?country=spain</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Para hacer esta prueba necesitaremos un cliente HTTP o bien introducir la URL en un navegador.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/user-query-params.png" alt="user query params">
+</div>
+</div>
+<div class="paragraph">
+<p>Para hacer una modificación se pasará un JSON en el cuerpo de la petición con los cambios a realizar. Por ejemplo, para cambiar el país a Italia pasaríamos este JSON en el cuerpo de la petición al endpoint <code>PATCH /users/{id}</code></p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+  "country": "Italy"
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Si lanzamos la petición con el <code>_id</code> del usuario a modificar, los cambios se almacenarán en la base de datos y nos devolverá los datos actualizados con país a Italia.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+  "_id": "johndoe",
+  "name": "John Doe",
+  "email": "johndoe@gmail.com",
+  "country": "Italy",
+  "__v": 0
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Para eliminar un usuario basta con usar el endpoint <code>DELETE /users/{id}</code> con el <code>_id</code> del usuario a eliminar.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
 <h2 id="trueanexo-i-configuración-de-mongodb-local-con-docker-compose"><a class="anchor" href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose"></a>Anexo I. Configuración de MongoDB local con Docker Compose</h2>
 <div class="sectionbody">
 <div class="paragraph">
@@ -1596,7 +2343,7 @@ export class ParseObjectIdPipe
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-04-16 14:57:23 +0200
+Last updated 2022-04-16 19:51:31 +0200
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/github.min.css">
