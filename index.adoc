@@ -1,0 +1,743 @@
+////
+NO CAMBIAR!!
+Codificación, idioma, tabla de contenidos, tipo de documento
+////
+:encoding: utf-8
+:lang: es
+:toc: right
+:toc-title: Tabla de contenidos
+:doctype: book
+:imagesdir: ./images
+:linkattrs:
+
+////
+Nombre y título del trabajo
+////
+# Creación de una API REST para MongoDB con NestJS
+Servicio de las Tecnologías de la Información y las Comunicaciones - Universidad de Almería
+
+image::logocloudstic.png[]
+
+// NO CAMBIAR!! (Entrar en modo no numerado de apartados)
+:numbered!: 
+
+
+[abstract]
+== Resumen
+////
+COLOCA A CONTINUACION EL RESUMEN
+////
+
+////
+COLOCA A CONTINUACION LOS OBJETIVOS
+////
+.Objetivos
+*
+
+[TIP]
+====
+Disponible el https://github.com/ualmtorres/nestjs-mongodb.git[repositorio] usado en este tutorial
+====
+
+// Entrar en modo numerado de apartados
+:numbered:
+
+## Introducción
+
+## Preparación del proyecto
+
+Comenzamos creando el proyecto y aceptamos las opciones predeterminadas.
+
+[source, bash]
+----
+$ nest new nestjs-mongodb
+----
+
+Nuestro proyecto tiene dependencias con Mongoose y Swagger OpenAPI. Las instalaremos con
+
+[source, bash]
+----
+$ npm install --save @nestjs/mongoose mongoose
+$ npm install --save @nestjs/swagger swagger-ui-express
+----
+
+La configuración de Swagger se realiza en `src/main.ts` indicando las opciones de presentación en Swagger UI, como el título, descripción y ruta en la que se sirve la documentación de la API.
+
+.Archivo `src/main.ts`
+[source, bash]
+----
+import { NestFactory } from '@nestjs/core';
+import { DocumentBuilder, SwaggerModule } from '@nestjs/swagger';
+import { AppModule } from './app.module';
+
+async function bootstrap() {
+  const app = await NestFactory.create(AppModule);
+
+  // Configurar títulos de documentación
+  const options = new DocumentBuilder() <1>
+    .setTitle('MongoDB Book REST API')
+    .setDescription('API REST para libros con MongoDB')
+    .setVersion('1.0')
+    .build();
+  const document = SwaggerModule.createDocument(app, options); <2>
+
+  // La ruta en que se sirve la documentación
+  SwaggerModule.setup('docs', app, document); <3>
+
+  await app.listen(3000);
+}
+bootstrap();
+----
+<1> Creación de la configuración de las opciones de presentación de Swagger
+<2> Prepración de la configuración creada para Swagger
+<3> Aplicación de la configuración y definición de `docs` como la ruta en la que se sirve la documentación
+
+A continuación generamos como el CLI de NestJS dos `resource` para libros y usuarios aceptando los valores predeterminados de si queremos crear los recursos para una API REST y que genere los endpoints para CRUD. 
+
+[source, bash]
+----
+$ nest generate resource books
+$ nest generate resource users
+----
+
+La generación de un `resource` con el CLI de NestJS genera los archivos de los servicios, controladores, módulos, DTOs y entidades. Además, proporciona una pequeña implementación para cada uno de ellos. En NestJS:
+
+* Los controladores se encargan de gestionar las peticiones que llegan y devuelven las respuestas al cliente
+* Los servicios se encargan de la resolver las peticiones. En nuestro caso se encargan de la interacción con MongoDB recuperando y almacenando documentos.
+* Los módulos permiten organizar la estructura de la aplicación e incluyen los controladores, servicios y los módulos que a su vez usan.
+* Los DTO definen la estructura de los objetos que se pasan en el cuerpo de las peticiones HTTP.
+* Una entidad representa a una clase que se persiste en la base de datos. **En Mongoose se usa el término _esquema_ en lugar de _entidad_ para hacer referencia a la clase que se persiste en la base de datos.**
+
+Ponemos la aplicación en uso con
+
+[source, bash]
+----
+$ npm run start:dev
+----
+
+Al probar el endpoint `GET /books` en `<url>:<port>/books` (p.e. `http://localhost:3000/books`) obtendremos
+
+[source, code]
+----
+This action returns all books
+----
+
+Al abrir el navegador en la ruta `<url>:<port>/docs` (p.e. `http://localhost:3000/docs`) vemos Swagger UI mostrando todos los endpoints de la API.
+
+image::Swagger-inicial.png[]
+
+Si desplegamos el endpoint `GET /books`, pulsamos el botón `Try it out` y luego pulsamos el botón `Execute` se llamará al endpoint `GET /books`. En `Server response` se muestra el código de la respuesta en `Code` y el resultado en `Response body`.
+
+image::swagger-get-books-inicial.png[]
+
+Como podemos comprobar, el uso de `nest generate resource` del CLI de NestJS nos ayuda enormemente al crear el _scaffolding_ para los objetos del dominio de nuestra aplicación (p.e. `books` y `users`). Nos genera una base funcional para las operaciones CRUD con los endpoints HTTP disponibles paras las operaciones `GET`, `POST`, `PATCH` y `DELETE` y las asocia a sus respectivos métodos en los servicios creados. Como hemos visto al probar `GET /books`,  la implementación de los servicios se limita a informar que han sido llamados. Posteriormente habrá que implementarlos programando la operación correspondiente de base de datos para cumplir su cometido real. Esta implementación la haremos cuando empecemos a desarrollar los respectivos módulos del dominio (`books` y `users`) en secciones posteriores. 
+
+.Advertencia sobre la generación de un `resource` para Mongoose
+****
+La generación de `resource` con el CLI de NestJS está ideada para bases de datos relacionales. Esto se aprecia en que:
+
+* Genera _entidades_. Las entidades son una abstracción que representa la persistencia en la base de datos de una clase del dominio. El término _entidad_ está asumido en el contexto del uso de ORMs en bases de datos relacionales. 
+* Supone que los identificadores que se van a usar en la base de datos son numéricos. Es conocido el uso de enteros autoincrementales para definir claves primarias en tablas de bases de datos relacionales.
+
+Sin embargo, cuando trabajamos con Mongoose:
+
+* Se usa el término _esquema_ en lugar de _entidad_.
+* En MongoDB el `_id` de los documentos de una colección no es de tipo entero, sino que es una cadena hexadecimal de 24 caracteres.
+
+Por tanto, habrá que hacer unas ligeras modificaciones sobre el código generado por el CLI de NestJS para adaptarlo a Mongoose. Estas modificaciones sobre el código generado para un `resource` son una opción más rápida que la creación y programación manual desde cero de los módulos, controladores, servicios, DTOs y esquemas que necesitaremos para cada objeto del dominio.
+****
+
+## Configuración de `app.module.ts`
+
+En `app.module.ts` se añade la configuración del acceso a MongoDB. Para nuestro ejemplo, MongoDB está en local, se accede a través del puerto `27017` y no necesita contraseña. Para otras configuraciones (p.e. _replica sets_, acceso autenticado, y demás, consultar la https://mongoosejs.com/docs/connections.html#connection-string-options[documentación oficial de Mongoose]).
+
+En este tutorial prepararemos una conexión local a MongDB creando una base de datos `tutorial`.
+
+[source, ts]
+----
+import { Module } from '@nestjs/common';
+import { AppController } from './app.controller';
+import { AppService } from './app.service';
+import { MongooseModule } from '@nestjs/mongoose';
+import { UsersModule } from './users/users.module';
+import { BooksModule } from './books/books.module';
+
+@Module({
+  imports: [
+    MongooseModule.forRoot('mongodb://localhost:27017/tutorial'), <1>
+    UsersModule,
+    BooksModule,
+  ],
+  controllers: [AppController],
+  providers: [AppService],
+})
+export class AppModule {}
+----
+<1> Conexión a base de datos `tutorial` en MongoDB local
+
+## Configuración del módulo de libros
+
+De acuerdo con el diagrama de <<Introducción>> tenemos objetos de dominio para libros y para los usuarios que realizan los comentarios sobre los libros. En esta sección nos centraremos sólo en los libros, sin incluir aún la relación con los autores de los comentarios. La inclusión de la referencia a los autores la dejamos para la sección <<$$$>>
+
+[TIP]
+====
+Es una buena técnica comenzar desarrollando inicialmente los módulos/clases/bloques de la API correspondiente a las clases del dominio que vamos a persistir en bases de datos. Una vez comprobado su funcionamiento por separado, se introducen las modificaciones en los esquemas Mongoose para incluir las relaciones a otros esquemas.
+====
+
+[NOTE]
+====
+Tal y como hemos comentado en <<Introducción>> hay que hacer unos ligeros cambios sobre el código generado para el `resource` con el CLI de NestJS. En concreto, habrá que cambiar las referencias a entidades por esquemas, y cambiar los identificadores de bases de datos numéricos a cadenas, ya que los `_id` de MongoDB son cadenas hexadecimales de 24 caracteres.
+====
+
+### Creación del esquema
+
+Comenzamos cambiando las entidades generadas por el CLI de NestJS por esquemas.
+
+. Renombramos la carpeta `src/books/entities` por `src/books/schemas`
+. Renombramos el archivo `src/books/entities/book.entity.ts` por `src/books/entities/book.schema.ts`
+
+Para definir un esquema Mongoose hay que:
+
+* Añadir a la clase el decorador `@Schema()`
+* Definir en la clase cada campo de la colección y añadirle el decorador `@Prop()`
+
+El decorador `@Schema()` sobre una clase hace que se cree una colección en MongoDB con el nombre de la clase, pero en plural (añadiéndole una _"s"_). El decorador `@Prop()` sobre una propiedad de la clase añade a la colección un campo con el nombre de la propiedad.
+
+.Archivo `src/books/schemas/book.schema.ts`
+[source, ts]
+----
+import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose'; <1>
+
+export type BookDocument = Book & Document; <2>
+
+@Schema() <3>
+export class Book {
+  @Prop() <4>
+  genre: string;
+
+  @Prop()
+  description: string;
+
+  @Prop()
+  author: string;
+
+  @Prop()
+  pages: number;
+
+  @Prop()
+  image_url: string;
+
+  @Prop([String]) <5>
+  keywords: string[];
+}
+
+export const BookSchema = SchemaFactory.createForClass(Book); <6>
+----
+<1> Importación de `Document` desde Mongoose
+<2> Definición del tipo de un documento libro
+<3> Decorador para crear una colección MongoDB para la clase
+<4> Decorador para añadir un campo a la colección
+<5> Indicación de un tipo no primitivo
+<6> Esquema Mongoose creado a partir de la clase `Book`
+
+[NOTE]
+====
+Para tipos no primitivos (como arrays, documentos o una combinación de ellos) hay que añadir en `@Prop()` el tipo de datos que se va usar.
+====
+
+### Configuración del módulo
+
+En el módulo tenemos que registrar el esquema para que cree la colección correspondiente en MongoDB. Esto lo haremos añadiendo el método `forFeature` de `MongooseModule` en el array `imports`.
+
+[source, ts]
+----
+import { Module } from '@nestjs/common';
+import { BooksService } from './books.service';
+import { BooksController } from './books.controller';
+import { MongooseModule } from '@nestjs/mongoose';
+import { Book, BookSchema } from './schemas/book.schema';
+
+@Module({
+  imports: [
+    MongooseModule.forFeature([{ name: Book.name, schema: BookSchema }]), <1>
+  ],
+  controllers: [BooksController],
+  providers: [BooksService],
+})
+export class BooksModule {}
+----
+<1> Registro del esquema de los libros
+
+Al guardar los cambios, Mongoose crea la colección `books` en la base de datos.
+
+[NOTE]
+====
+Si la base de datos no estaba creada aún, al guardar el primer esquema, se crea la base de datos y la colección asociada al esquema creado.
+====
+
+### Creación del DTO
+
+El DTO define la estructura de un objeto que se pasa en el cuerpo de una petición HTTP. Inicialmente, y de acuerdo con el diagrama de <<Introducción>>, los campos de los libros, excluídos los campos de relación, son los siguientes:
+
+* `id` como identificador del libro.
+* `title` para el título
+* `genre` para el género
+* `description` para una descripción completa
+* `author` para el autor del libro
+* `pages` para el número de páginas
+* `image_url` para la URL en la que está disponible la imagen del libro
+* `keywords` con una lista de palabras clave
+
+.Archivo `src/books/dto/create-book.dto.ts`
+[source, ts]
+----
+import { ApiProperty } from '@nestjs/swagger';
+export class CreateBookDto {
+  @ApiProperty({ <1>
+    example: 'Nest.js: A Progressive Node.js Framework (English Edition)',
+  })
+  readonly title: string; <2>
+
+  @ApiProperty({ example: 'Web Development' })
+  readonly genre: string;
+
+  @ApiProperty({
+    example:
+      'JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...',
+  })
+  readonly description: string;
+
+  @ApiProperty({ example: 'Jay Bell' })
+  readonly author: string;
+
+  @ApiProperty({ example: 350 })
+  readonly pages: number;
+
+  @ApiProperty({
+    example: 'https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg',
+  })
+  readonly image_url: string;
+
+  @ApiProperty({ example: ['NestJS', 'REST API'] }) <3>
+  readonly keywords: string[];
+}
+----
+<1> Decorador para definir una propiedad para la documentación en Swagger OpenAPI
+<2> Definición de campo
+<3> Ejemplo como un array
+
+En Swagger UI, al desplegar el endpoint `POST /books` el ejemplo muestra los valores configurados con el decorador `@ApiProperty` de Swagger OpenAPI. También aparecen como plantilla si probásemos a introducir un libro. Aún no probaremos a insertar el libro porque está sin implementar el servicio. Recordamos que la implementación actual del servicio es la que ha generado el CLI de NestJS y se limita a mostrar que el servicio ha sido llamado. Hay que cambiar su implmentación para que interactúe con la base de datos.
+
+image::dto-libro.png[]
+
+### Implementación del servicio
+
+Partimos del código generado por el CLI de NestJS para el servicio. Además de dar la implementación de la interacción con la base de datos mediante Mongoose habrá que:
+
+* Hacer que los métodos sean `async` ya que los métodos de acceso a la base de datos son asíncronos y devuelven promesas.
+* Configurar el tipo devuelto por los métodos.
+* Cambiar el parámetro `id` de `number` a `string` para que pueda tratar con el `_id` hexadecimal de MongoDB.
+
+[NOTE]
+====
+Recordamos que el CLI de NestJS genera el código de los métodos del servicio pensando en que la clave es de tipo numérico. Hay que cambiar el tipo del argumento `id` en los métodos `findOne`, `update` y `remove` a `string` para que sea válido para el `_id` de 24 caracteres hexadecimales de MongoDB.
+====
+
+Los métodos que usaremos de Mongoose serán
+
+* `create()` para la inserción de un documento.
+* `find()` para recuperar todo.
+* `findOne()` para recuperar un documento.
+* `findOneAndUpdate()` para la actualización de un documento.
+* `remove()` para la eliminación de un documento.
+
+.Archivo `src/books/books.service.ts`
+[source, ts]
+----
+import { Injectable } from '@nestjs/common';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Book, BookDocument } from './schemas/book.schema';
+import { Model } from 'mongoose';
+
+@Injectable()
+export class BooksService {
+  constructor( <1>
+    @InjectModel(Book.name) private readonly bookModel: Model<BookDocument>, <2>
+  ) {}
+
+  async create(createBookDto: CreateBookDto): Promise<Book> { <3>
+    return this.bookModel.create(createBookDto); <4>
+  }
+
+  async findAll(): Promise<Book[]> { <5>
+    return this.bookModel.find().exec();
+  }
+
+  async findOne(id: string): Promise<Book> { <6>
+    return this.bookModel.findOne({ _id: id }).exec(); <7>
+  }
+
+  async update(id: string, updateBookDto: UpdateBookDto): Promise<Book> { <8>
+    return this.bookModel.findOneAndUpdate({ _id: id }, updateBookDto, { <9>
+      new: true, <10>
+    });
+  }
+
+  async remove(id: string) { <11>
+    return this.bookModel.findByIdAndRemove({ _id: id }).exec(); <12>
+  }
+}
+----
+<1> Añadir un constructor
+<2> Definir un modelo para libros mediante inyección de dependencias
+<3> Cambiar a `async` y que devuelva `Promise<Book>` con el libro creado
+<4> Llamada al método de creación de documentos
+<5> Cambiar a `async` y que devuelva `Promise<Book[]>` con la lista de libros
+<6> Cambio del tipo `id` a `string` para adaptarlo al `_id` de MongoDB, cambiar a `async` y que devuelva `Promise<Book>` con el libro buscado
+<7> Llamada al método de búsqueda de un documento por `id`
+<8> Cambio del tipo `id` a `string` para adaptarlo al `_id` de MongoDB, cambiar a `async` y que devuelva `Promise<Book>` con el libro modificado
+<9> Llamada al método de actualización de documentos por `id` pasándole el JSON con las modificaciones
+<10> Opción para que devuelva el objeto modificado
+<11> Cambio del tipo `id` a `string` para adaptarlo al `_id` de MongoDB y cambiar a `async`
+<12> Llamada al método de eliminación de documentos por `id`
+
+[NOTE]
+====
+De forma predeterminada, el método `findOneAndUpdate` devuelve el objeto original, no el modificado. Para que devuelva el objeto ya modificado hay que pasar al método la opción de `{new: true}`.
+====
+
+.Modelos en Mongoose
+****
+Los modelos en Mongoose son los homólogos de los repositorios en TypeORM.
+
+Cuando estamos creando una API en NestJS con una base de datos relacional, en el constructor del servicio se inyecta un objeto _repositorio_ que envuelve a la _entidad_ que se persiste en la base de datos. El objeto _repositorio_ ofrece todos los métodos para interactuar con la base de datos y abstraernos de los detalles (métodos `create`, `find`, `findOne`, `save`, ...).
+
+En los servicios con Mongose inyectaremos un objeto _modelo_ que envuelve al _esquema_ que se persiste en MongoDB. El objeto _modelo_ ofrece todos los métodos para interactuar con la base de datos y abstraernos de los detalles (métodos `create`, `find`, `findOne`, `save`, ...).
+****
+
+### Modificación del controlador
+
+En el controlador hay que hacer pocos cambios respecto al código generado por el CLI de NestJS. Sólo haremos cambios para
+
+* No convetrir a `number` el valor del `id` recibido como parámetro en la URL para las operaciones de buscar uno, modificar y eliminar.
+* Añadir decoradores de Swagger OpenAPI.
+
+.Archivo `src/books/books.controller.ts`
+[source, ts]
+----
+import { Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger'; <1>
+import { BooksService } from './books.service';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+
+@Controller('books')
+@ApiTags('book') <2>
+
+export class BooksController {
+  constructor(private readonly booksService: BooksService) {}
+
+  @Post()
+  create(@Body() createBookDto: CreateBookDto) {
+    return this.booksService.create(createBookDto);
+  }
+
+  @Get()
+  findAll() {
+    return this.booksService.findAll();
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.booksService.findOne(id); <3>
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateBookDto: UpdateBookDto) {
+    return this.booksService.update(id, updateBookDto); <4>
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.booksService.remove(id); <5>
+  }
+}
+----
+<1> Decorador de OpenAPI para agrupar los endpoints en Swagger UI
+<2> Agrupar los endpoints para una etiqueta en Swagger UI 
+<3> Pasar al servicio el `id` como cadena porque el `_id` en MongoDB son cadenas hexadecimales
+<4> Pasar al servicio el `id` como cadena porque el `_id` en MongoDB son cadenas hexadecimales
+<5> Pasar al servicio el `id` como cadena porque el `_id` en MongoDB son cadenas hexadecimales
+
+La configuración del decorador `@ApiTags('book')` ha creado una categoría `book` en Swagger UI para los libros.
+
+image::categoria-book.png[]
+
+### Filtrado de resultados mediante parámetros en la URL
+
+Podemos añadir a nuestras peticiones de recuperación de datos opciones de filtrado. Lo haremos mediante parámetros de consulta en la URL (p.e. `?keywords=NestJS&pages=350`). Para ello, añadiremos un objeto `Request` de `Express` al método `findAll` para permitir el uso de parámetros en la URL para el filtrado de resultados.
+
+.Archivo `src/books/books.controller.ts`
+[source, ts]
+----
+import { Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express'; <1>
+import { BooksService } from './books.service';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+
+@Controller('books')
+@ApiTags('book')
+export class BooksController {
+  constructor(private readonly booksService: BooksService) {}
+
+  @Post()
+  create(@Body() createBookDto: CreateBookDto) {
+    return this.booksService.create(createBookDto);
+  }
+
+  @Get()
+  findAll(@Req() request: Request) { <2>
+    return this.booksService.findAll(request); <3>
+  }
+
+  @Get(':id')
+  findOne(@Param('id') id: string) {
+    return this.booksService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateBookDto: UpdateBookDto) {
+    return this.booksService.update(id, updateBookDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id') id: string) {
+    return this.booksService.remove(id);
+  }
+}
+----
+<1> Uso de objetos `Request` en el controlador
+<2> Incluir un parámetro con un objeto `Request` para acceder a los parámetros de la consulta en la URL
+<3> Incluir el objeto `Request` en la llamada al servicio
+
+Ahora introducimos los cambios en el servicio para permitir acceder a los parámetros introducidos en la URL para filtrar y cambiamos la implementación del método `findAll` para que use la búsqueda con filtros.
+
+.Archivo `src/books/books.service.ts`
+[source, ts]
+----
+import { Injectable } from '@nestjs/common';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Book, BookDocument } from './schemas/book.schema';
+import { Model } from 'mongoose';
+import { Request } from 'express'; <1>
+
+@Injectable()
+export class BooksService {
+  constructor(
+    @InjectModel(Book.name) private readonly bookModel: Model<BookDocument>,
+  ) {}
+
+  async create(createBookDto: CreateBookDto): Promise<Book> {
+    return this.bookModel.create(createBookDto);
+  }
+
+  async findAll(request: Request): Promise<Book[]> { <2>
+    return this.bookModel
+      .find(request.query) <3>
+      .setOptions({ sanitizeFilter: true }) <4>
+      .exec();
+  }
+
+  async findOne(id: string): Promise<Book> {
+    return this.bookModel.findOne({ _id: id }).exec();
+  }
+
+  async update(id: string, updateBookDto: UpdateBookDto) {
+    return this.bookModel.findOneAndUpdate({ _id: id }, updateBookDto, {
+      new: true,
+    });
+  }
+
+  async remove(id: string) {
+    return this.bookModel.findByIdAndRemove({ _id: id }).exec();
+  }
+}
+----
+<1> Añadir la dependecia con `Request` de `Express` para acceder a los parámetros de la consulta de una `request`
+<2> Añadir un parámetro `Request` para acceder a los parámetros de la consulta pasados en la URL
+<3> Llamada al método de búsqueda de documentos pasándole los parámetros de la consulta
+<4> Configuración para evitar la inyección de código malicioso
+
+[INFO]
+====
+`request.query` devuelve una lista clave-valor con cada uno de los campos de filtrado y su valor correspondiente introducidos en la URL.
+====
+
+### Prueba de los endpoints
+
+Probamos el endpoint `POST /books` con los valores del ejemplo
+
+image::book-post.png[]
+
+El resultado devuelto será similar a este, en el que se muestran los datos guardados en la base de datos junto al `_id` generado por MongoDB.
+
+[source, json]
+----
+{
+  "genre": "Web Development",
+  "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+  "author": "Jay Bell",
+  "pages": 350,
+  "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+  "keywords": [
+    "NestJS",
+    "REST API"
+  ],
+  "_id": "62594f8ddae1eebf6c6c209c",
+  "__v": 0
+}
+----
+
+Tras la inserción podemos probar que se recuperan correctamente los libros con el endpoint `GET /books`. Para probar el endpoint que devuelve un libro concreto, copiaremos el `_id` del libro, desplegaremos en Swagger UI el endpoint `GET /books/{:id}`, pulsamemos `Try it out` para probar el endpoint e introduciremos el `_id` del libro creado. Tras pulsar `Execute` vemos que se recupera correctamente el libro.
+
+image::book-findone.png[]
+
+Para probar el filtrado comprobaremos con una condición de filtrado para libros con 350 páginas. Para ello, en la URL introduciremos la condición de esta forma
+
+[source, code]
+----
+$ http://localhost:3000/books?pages=350
+----
+
+Para hacer esta prueba necesitaremos un cliente HTTP o bien introducir la URL en un navegador.
+
+image::query-params.png[]
+
+Podemos concatenar varias condiciones y hará un `AND` lógico con ellas. Para devolver los libros de 350 páginas del género `Web Development` usaríamos
+
+[source, code]
+----
+http://localhost:3000/books?pages=350&genre=Web%20Development
+----
+
+Además, permite la búsqueda en arrays. Para buscar los libros que contengan `NestJS` en sus palabras clave usaríamos
+
+[source, code]
+----
+http://localhost:3000/books?keywords=NestJS
+----
+
+Para hacer una modificación se pasará un JSON en el cuerpo de la petición con los cambios a realizar. Por ejemplo, para cambiar el número de páginas a 400 pasaríamos este JSON en el cuerpo de la petición al endpoint `PATCH /books/{id}`
+
+[source, json]
+----
+{
+  "pages": 400
+}
+----
+
+Si lanzamos la petición con el `_id` del libro a modificar, los cambios se almacenarán en la base de datos y nos devolverá los datos actualizados con el número de páginas a 400.
+
+[source, json]
+----
+{
+  "_id": "62594f8ddae1eebf6c6c209c",
+  "genre": "Web Development",
+  "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+  "author": "Jay Bell",
+  "pages": 400,
+  "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+  "keywords": [
+    "NestJS",
+    "REST API"
+  ],
+  "__v": 0
+}
+----
+
+Para eliminar un libro basta con usar el endpoint `DELETE /book/{id}` con el `_id` del libro a eliminar.
+
+// (Entrar en modo no numerado de apartados)
+:numbered!: 
+
+## Anexo I. Configuración de MongoDB local con Docker Compose
+
+Para trabajar localmente con MongoDB necesitamos una base de datos a la que conectarnos. Para no tener que complicarnos con instalaciones y no acoplar el desarrollo a nuestro equipo utilizaremos una instalación local de MongoDB con Docker Compose. Trabajaremos con una base de datos denominada `tutorial` que guarda los datos en un directorio `mongo-data` respecto al directorio en el que esté el archivo `docker-compose.yml`
+
+.Archivo `docker-compose.yml`
+----
+version: "3"
+
+services:
+  mongodb:
+    container_name: mongodb
+    image: mongo:latest
+    environment:
+      - MONGODB_DATABASE="tutorial"
+    ports:
+      - 27017:27017
+    volumes:
+      - ./mongo-data:/data/db
+----
+
+## Anexo II. Validaciones en Mongoose
+
+https://mongoosejs.com/docs/validation.html[documentación oficial]
+
+## Anexo III. Rechazo de peticiones con `_id` inválido
+
+.Archivo `utilities/parse-object-id-pipe.pipe.ts`
+
+[source, ts]
+----
+import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
+import mongoose from 'mongoose';
+@Injectable()
+export class ParseObjectIdPipe
+  implements PipeTransform<any, mongoose.Types.ObjectId>
+{
+  transform(value: any): mongoose.Types.ObjectId {
+    const validObjectId: boolean = mongoose.isObjectIdOrHexString(value);
+    if (!validObjectId) {
+      throw new BadRequestException('Invalid ObjectId');
+    }
+    return value;
+  }
+}
+----
+
+Uso del pipe en los controladores
+
+[source, ts]
+----
+ @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string) { <1>
+    return this.booksService.findOne(id);
+  }
+----
+<1> 
