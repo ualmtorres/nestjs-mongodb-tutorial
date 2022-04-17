@@ -14,9 +14,9 @@ Codificación, idioma, tabla de contenidos, tipo de documento
 Nombre y título del trabajo
 ////
 # Creación de una API REST para MongoDB con NestJS
-Servicio de las Tecnologías de la Información y las Comunicaciones - Universidad de Almería
+Manuel Torres - Departamento de Informática. Universidad de Almería
 
-image::logocloudstic.png[]
+image::di.png[]
 
 // NO CAMBIAR!! (Entrar en modo no numerado de apartados)
 :numbered!: 
@@ -27,12 +27,18 @@ image::logocloudstic.png[]
 ////
 COLOCA A CONTINUACION EL RESUMEN
 ////
-
+MongoDB es la base de datos NoSQL más popular debido a su sencillez, velocidad y a su capaciudad de escalado. Su versatilidad y su rapidez hacen que esté cada vez más presente en el desarrollo de aplicaciones de bases de datos, especialmente en aquellas que pueden crecer a escala Internet. En este tutorial veremos cómo crear una API REST NestJS para MongoDB con Mongoose, el ODM de referencia de MongoDB para Node.js.
 ////
 COLOCA A CONTINUACION LOS OBJETIVOS
 ////
 .Objetivos
-*
+* Entender los conceptos de esquema y modelo en Mongoose.
+* Definir atributos multivaluados en un esquema.
+* Crear esquemas basados en otros esquemas.
+* Aprender a crear referencias entre esquemas diferentes.
+* Aprender a usar las técnicas para la creación de una API REST NestJS para MongoDB con Mongoose.
+* Filtrar datos de una petición mediante el uso de parámetros de consulta en la URL.
+* Introducir el uso de _pipes_ para comprobar la validez de parámetros de entrada de la API.
 
 [TIP]
 ====
@@ -43,6 +49,32 @@ Disponible el https://github.com/ualmtorres/nestjs-mongodb.git[repositorio] usad
 :numbered:
 
 ## Introducción
+
+MongoDB es una base de datos que almacena documentos JSON y ofrece una gran escalabilidad y flexibilidad. Actualmente, de acuerdo con https://db-engines.com/en/ranking[DB-Engines Ranking], es la base de datos NoSQL más popular. Su modelo de datos basado en documentos ofrece una forma de trabajar muy sencilla e intuitiva para desarrolladores.
+
+https://mongoosejs.com/[Mongoose] es un ODM (Object Document Mapper) para Node.js análogo a los ORM (Object Relational Mapper) como Hibernate para Java, Doctrine para PHP o SQLAlchemy para Python. A pesar de que MongoDB es una base de datos sin esquema, Mongoose proporciona una solución basada en esquemas que ofrece un sistema de tipos, validaciones, construcción de consultas y otras características que lo hacen una opción muy interesante para el desarrollo en de una API REST NestJS si la base de datos en MongoDB. 
+
+En este tutorial veremos cómo crear una API REST en NestJS para un ejemplo sencillo de un catálogo de libros en MongoDB y programado con Mongoose. Aunque el ejemplo es sencillo, introduciremos las cuestiones cotidianas que se suelen presentar al trabajar con MongoDB, como son el tratamiento que hace MongoDB de los atributos multivaluados, el manejo de relaciones `1:M` como agregados y la referencia a objetos de otras colecciones de documentos.
+
+La figura siguiente ilustra el modelo de agregados que usaremos en este tutorial.
+
+image::modelo-de-agregados.png[]
+
+Básicamente guardamos datos de libros, una lista de palabras clave de cada libro y los distintos comentarios que se realizan sobre ellos. Cada comentario es realizado por una persona y guardaremos una serie de datos de cada persona.
+
+Con MongoDB no crearemos una colección para cada una de las entidades de dominio que aparecen en la figura (`Book`, `Comment` y `User`) y otra colección para `keywords` de `Book` (que aparece como un array de cadenas), lo que haría un total de cuatro colecciones. Si hiciésemos eso estaríamos utilizando implícitamente las técnicas de diseño de bases de datos relacionales en MongoDB. Y el único cambio que estaríamos haciendo es que en lugar de almacenar filas, estaríamos almacenando documentos JSON. Pero esto no es una buena opción porque no estaríamos aprovechando las ventajas que puede aportar MongoDB. Usar MongoDB implica algo más que cambiar los registros por documentos JSON. Implica cambiar la técnica de diseño. En este caso crearíamos una única colección para todo el agregado, que se corresponde con la zona sombreada de la figura. Denominaremos `Book` a esa colección y en su esquema habrá:
+
+* Los campos _básicos_ del libro (`id, title, genre, description, author, pages, image_url`).
+* Un campo para el atributo multivaluado `keywords`. Se definiría como una array de cadenas (primer cambio respecto al enfoque relacional).
+* Un campo para la lista de comentarios `comments`. Se definiría como un array de documentos de tipo `Comment`(segundo cambio respecto al enfoque relacional). En el esquema `Comment` el campo `username` será una referencia al esquema de la colección `User`.
+
+Vemos que la relación `1:M` queda embebida dentro de los libros. En cambio, no incluimos los datos del usuario en cada comentario para no repetir todos los datos de un usuario cada vez que un usuario realice un comentario.
+
+Por tanto, para este ejemplo tendremos únicamente dos colecciones: `Book` y `User`. Como escenario de aplicación se puede pensar en una página de un catálogo de libros de una tienda online de libros, en la que para cada libro se mostrarán tanto los datos del libro, como sus palabras clave y sus comentarios. Así, cada vez que se recupere un libro se recupera con todos los datos hay que mostrar.
+
+Una implementación relacional habría creado 4 tablas (`Book`,`Book-Keywords`, `Books-Comments` y `Comment-User`). Este enfoque, además de ser más intuitivo, aumenta la velocidad de las consultas ya que se evitan los joins para recuperar las palabras clave y los comentarios de un libro. Pero ahí no queda todo. Dado que los datos relacionados se almacenan juntos, la base de datos puede escalar horizontalmente añadiendo más nodos a un cluster sin penalizar su rendimiento. Así, unos libros estarán en un nodo y otros estarán en otros, pero no habrá penalización en los joins ya que las palabras clave y los comentarios de cada libro están almacenados junto al libro, y se recuperarán juntos.
+
+Casos de uso como aplicaciones IoT (p.e. agregando las medidas de los dispositivos, eventos en una cadena de producción, meteorología), Gaming o aplicaciones de streaming (p.e. guardando las últimas posiciones, eventos, reproducciones, posición de reproducción), Vistas simplificadas de los datos más importantes (p.e. datos calculados, colecciones de datos resumidos) y demás, hacen hoy día de MongoDB una solución de almacenamiento a considerar.
 
 ## Preparación del proyecto
 
@@ -89,10 +121,10 @@ async function bootstrap() {
 bootstrap();
 ----
 <1> Creación de la configuración de las opciones de presentación de Swagger
-<2> Prepración de la configuración creada para Swagger
+<2> Preparación de la configuración creada para Swagger
 <3> Aplicación de la configuración y definición de `docs` como la ruta en la que se sirve la documentación
 
-A continuación generamos como el CLI de NestJS dos `resource` para libros y usuarios aceptando los valores predeterminados de si queremos crear los recursos para una API REST y que genere los endpoints para CRUD. 
+A continuación generamos con el CLI de NestJS dos `resource` para libros y usuarios aceptando los valores predeterminados de si queremos crear los recursos para una API REST y que genere los endpoints para CRUD. 
 
 [source, bash]
 ----
@@ -100,10 +132,10 @@ $ nest generate resource books
 $ nest generate resource users
 ----
 
-La generación de un `resource` con el CLI de NestJS genera los archivos de los servicios, controladores, módulos, DTOs y entidades. Además, proporciona una pequeña implementación para cada uno de ellos. En NestJS:
+La generación de un `resource` con el CLI de NestJS genera los archivos de los servicios, controladores, módulos, DTOs y entidades. Además, proporciona una pequeña implementación inicial para cada uno de ellos. En NestJS:
 
-* Los controladores se encargan de gestionar las peticiones que llegan y devuelven las respuestas al cliente
-* Los servicios se encargan de la resolver las peticiones. En nuestro caso se encargan de la interacción con MongoDB recuperando y almacenando documentos.
+* Los controladores se encargan de gestionar las peticiones que llegan y devuelven las respuestas al cliente.
+* Los servicios se encargan de resolver las peticiones. En nuestro caso se encargan de la interacción con MongoDB recuperando y almacenando documentos.
 * Los módulos permiten organizar la estructura de la aplicación e incluyen los controladores, servicios y los módulos que a su vez usan.
 * Los DTO definen la estructura de los objetos que se pasan en el cuerpo de las peticiones HTTP.
 * Una entidad representa a una clase que se persiste en la base de datos. **En Mongoose se usa el término _esquema_ en lugar de _entidad_ para hacer referencia a la clase que se persiste en la base de datos.**
@@ -177,7 +209,7 @@ export class AppModule {}
 
 ## Configuración del módulo de libros
 
-De acuerdo con el diagrama de <<Introducción>> tenemos objetos de dominio para libros y para los usuarios que realizan los comentarios sobre los libros. En esta sección nos centraremos sólo en los libros, sin incluir aún la relación con los autores de los comentarios. La inclusión de la referencia a los autores la dejamos para la sección <<$$$>>
+De acuerdo con el diagrama de <<Introducción>> tenemos objetos de dominio para libros y para los usuarios que realizan los comentarios sobre los libros. En esta sección nos centraremos sólo en los libros, sin incluir aún la relación con los autores de los comentarios. La inclusión de la referencia a los autores la dejamos para la sección <<Incorporación de comentarios>>
 
 [TIP]
 ====
@@ -594,7 +626,7 @@ export class BooksService {
 <3> Llamada al método de búsqueda de documentos pasándole los parámetros de la consulta
 <4> Configuración para evitar la inyección de código malicioso
 
-[INFO]
+[NOTE]
 ====
 `request.query` devuelve una lista clave-valor con cada uno de los campos de filtrado y su valor correspondiente introducidos en la URL.
 ====
@@ -1071,7 +1103,7 @@ export class UsersService {
 <3> Llamada al método de búsqueda de documentos pasándole los parámetros de la consulta
 <4> Configuración para evitar la inyección de código malicioso
 
-[INFO]
+[NOTE]
 ====
 `request.query` devuelve una lista clave-valor con cada uno de los campos de filtrado y su valor correspondiente introducidos en la URL.
 ====
@@ -1259,6 +1291,488 @@ export class BooksController {
 <1> Uso de `ParseObjectIdPipe` para la búsqueda de un libro
 <2> Uso de `ParseObjectIdPipe` para la modificación de un libro
 <3> Uso de `ParseObjectIdPipe` para la eliminación de un libro
+
+## Incorporación de comentarios 
+
+Cuando creamos el esquema para los libros, el campo `keywords` fue definido como un array. En una base de datos relacional habríamos definido una tabla aparte para guardar esa lista de valores. Sin embargo, en una base de datos como MongoDB las técnicas de diseño son diferentes y ese tipo de campos multivaluados se guardan directamente en un array.
+
+El campo `keywords` fue definido como un array de cadenas en el esquema de los libros.
+
+[source, ts]
+----
+...
+
+@Schema()
+export class Book {
+  ...
+
+  @Prop([String]) <1> 
+  keywords: string[]; <2>
+}
+
+...
+----
+<1> Array de `String` MongoDB
+<2> Palabras clave como un array de cadenas
+
+[NOTE]
+====
+Para tipos no primitivos (como arrays, documentos o una combinación de ellos) hay que añadir en `@Prop()` el tipo de datos que se va usar.
+====
+
+A continuación vamos a modificar el esquema de los libros para añadir un nuevo campo para los comentarios. De acuerdo con el esquema de <<Introducción>> los comentarios también son un campo multivaluado. Sin embargo, a diferencia de las palabras clave, no son un array de un tipo primitivo. Los comentarios son un array de documentos. En tal caso, crearemos un esquema para ellos.
+
+### Creación del esquema
+
+Inicialmente, y de acuerdo con el diagrama de <<Introducción>>, exceptuando el identificador, los campos de los comentarios son los siguientes:
+
+* `title` como título del comentario.
+* `stars` como valoración en forma de estrellas que tiene el comentario.
+* `comment` como descripción del comentario.
+* `username` como autor del comentario.
+
+En este esquema prestamos también atención a que los autores de los comentarios son los usuarios que tenemos definidos en el esquema `User`.  Esto lo implementaremos mediante referencias en Mongoose.
+
+.Archivo `src/books/schemas/comment.schema.ts`
+[source, bash]
+----
+import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
+import { ApiProperty } from '@nestjs/swagger';
+import { Document } from 'mongoose';
+import { User } from '../../users/schemas/user.schema';
+import mongoose from 'mongoose';
+
+export type CommentDocument = Comment & Document;
+
+@Schema()
+export class Comment {
+  @Prop()
+  title: string;
+
+  @Prop()
+  stars: number;
+
+  @Prop()
+  comment: string;
+
+  @Prop({ type: mongoose.Schema.Types.String, ref: 'User' }) <1>
+  username: User; <2>
+}
+
+export const CommentSchema = SchemaFactory.createForClass(Comment);
+----
+<1> Tipo como una referencia a los usuarios en los que la clave es un `String`, no un `ObjectId`
+<2> Creador del comentario de tipo `User`
+
+.Tipos de las referencias
+****
+Una referencia introduce una relación entre un campo y un esquema Mongoose. La referencia se configura en el decorador `@Prop()`. Hay que tener en cuenta dos cuestiones:
+
+* Con `ref` definimos el tipo de datos del campo que se está definiendo. Lo hacemos indicando el esquema de destino.
+* `type` es el tipo de datos Mongoose con el que enlaza la propiedad que se está definiendo. En el ejemplo de los usuarios, como el `_id` lo configuramos para que fuera el nombre de usuario y éste lo definimos como tipo cadena, la referencia del destino será a un tipo `mongoose.Schema.Types.String`. Si el campo referenciado fuese un identificador hexadecimal MongoDB, el tipo de datos sería `mongoose.Schema.Types.ObjectId`
+****
+
+### Incorporación de los comentarios al esquema de los libros
+
+Una vez definido el esquema de los comentarios podemos modificar el esquema de los libros para añadirle un nuevo campo para los comentarios. Su tipo de datos será un array de comentarios.
+
+.Archivo `src/books/schemas/book.schema.ts`
+----
+import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+import { CommentSchema } from './comment.schema';
+
+export type BookDocument = Book & Document;
+
+@Schema()
+export class Book {
+  @Prop()
+  genre: string;
+
+  @Prop()
+  description: string;
+
+  @Prop()
+  author: string;
+
+  @Prop()
+  pages: number;
+
+  @Prop()
+  image_url: string;
+
+  @Prop([String])
+  keywords: string[];
+
+  @Prop([CommentSchema]) <1>
+  comments: Comment[]; <2>
+}
+
+export const BookSchema = SchemaFactory.createForClass(Book);
+----
+<1> Configuración del tipo porque no es un tipo básico
+<2> Tipo de los comentarios
+
+[NOTE]
+====
+Como el tipo de datos de los comentarios no es un tipo primitivo, hay que indicar su tipo en el decorador `@Prop`.
+====
+
+Al guardar los cambios se modificarán los documentos almacenados en la colección `books` y les habrá añadido un campo `comments` cuyo tipo es un array de comentarios.
+
+Si probamos cualquiera de los endpoints de recuperación de libros veremos que ahora los libros tienen la lista de comentarios. A continuación se muestra lo que devolvería el endpoint `GET /users`.
+
+[source, json]
+----
+[
+  {
+    "_id": "62594f8ddae1eebf6c6c209c",
+    "genre": "Web Development",
+    "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+    "author": "Jay Bell",
+    "pages": 350,
+    "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+    "keywords": [
+      "NestJS",
+      "REST API"
+    ],
+    "__v": 0,
+    "comments": [] <1>
+  }
+]
+----
+<1> Comentarios como un array
+
+.Los agregados en una base de datos NoSQL
+****
+La definición de un esquema para los comentarios no supone la creación de una nueva colección. Para definir una colección a partir de un esquema en Mongoose hay que crear un _modelo_. En el tutorial hemos creado dos modelos al inyectarlos como dependencia en los servicios creados para los libros y los usuarios. Crear un esquema para los comentarios simplemente define un tipo de documento que queda disponible para definir campos en un esquema Mongoose.
+
+La idea de incorporación de datos anidados choca bastante inicialmente si se tiene una visión relacional profunda. La creación de estas estructuras complejas de arrays, subdocumentos y cualquier combinación de ellos se corresponde con el concepto de _agregado_ de las bases de datos NoSQL. En una base de datos relacional habríamos segregado los comentarios a una tabla aparte debido a la relación `1:M` que hay entre los libros y los comentarios. Sin embargo, el criterio de diseño en una base de datos NoSQL es que si los datos se van a recuperar juntos, se deben almacenar también juntos.
+
+El planteamiento de los _agregados_ reduce enormemente la complejidad de los esquemas de la base de datos y aumenta la velocidad de las consultas, ya que se reducen las operaciones de _join_ porque los datos relacionados están almacenados junto a los datos que los referencian. Por tanto, es muy importante conocer a priori los tipos de consultas que vamos a tener porque condicionarán e influirán en el diseño de la base de datos para definir los agregados.
+
+Para una visión panorámica sobre las bases de datos NoSQL, consulta https://www.thoughtworks.com/insights/blog/nosql-databases-overview[NoSQL Databases: An Overview
+]. Si no conoces las bases de datos NoSQL, tras su lectura cambiará tu forma de ver las bases de datos.
+****
+
+### Creación del DTO
+
+El DTO define la estructura de un objeto que se pasa en el cuerpo de una petición HTTP. Inicialmente, y de acuerdo con el diagrama de <<Introducción>>, para un comentario tendremos los mismos campos que para el esquema definido anteriormente. Cuando se guarden los comentarios, MongoDB les asignará un `_id` porque no se ha definido ningún `_id` específico en el esquema de los comentarios, pero esto es cosa de MongoDB. Desde el punto de vista del DTO, los datos que nos interesan son:
+
+* `title` como título del comentario.
+* `stars` como valoración en forma de estrellas que tiene el comentario.
+* `comment` como descripción del comentario.
+* `username` como autor del comentario.
+
+.Archivo `src/books/dto/create-comment.dto.ts`
+[source, ts]
+----
+import { ApiProperty } from '@nestjs/swagger';
+import { User } from '../../users/schemas/user.schema';
+
+export class CreateCommentDto {
+  @ApiProperty({ example: 'Esperaba más' })
+  readonly title: string;
+
+  @ApiProperty({
+    example: 3,
+  })
+  readonly stars: number;
+
+  @ApiProperty({
+    example:
+      'Nisi officia fugiat id nulla laboris ex. Sit laboris culpa occaecat occaecat aliquip dolor non excepteur reprehenderit.',
+  })
+  readonly comment: string;
+
+  @ApiProperty({ example: 'johndoe' })
+  readonly username: User;
+}
+----
+
+### Implementación del método de creación de comentarios
+
+A continuación hay que modificar el servicio de comentarios para implementar un nuevo método que permita añadir comentarios a un libro. El nuevo método recibirá dos argumentos: el `id` del libro al que hay que añadir el comentario y el objeto con el comentario. Su implementación consistirá en recuperar el libro, añadir el comentario al array de comentarios del libro y guardar el libro.
+
+.Archivo `src/books/books.service.ts`
+[source, ts]
+----
+import { Injectable } from '@nestjs/common';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Book, BookDocument } from './schemas/book.schema';
+import { Model } from 'mongoose';
+import { Request } from 'express';
+
+@Injectable()
+export class BooksService {
+  constructor(
+    @InjectModel(Book.name) private readonly bookModel: Model<BookDocument>,
+  ) {}
+
+  async create(createBookDto: CreateBookDto): Promise<Book> {
+    return this.bookModel.create(createBookDto);
+  }
+
+  async findAll(request: Request): Promise<Book[]> {
+    return this.bookModel
+      .find(request.query)
+      .setOptions({ sanitizeFilter: true })
+      .exec();
+  }
+
+  async findOne(id: string): Promise<Book> {
+    return this.bookModel.findOne({ _id: id }).exec();
+  }
+
+  async update(id: string, updateBookDto: UpdateBookDto): Promise<Book> {
+    return this.bookModel.findOneAndUpdate({ _id: id }, updateBookDto, {
+      new: true,
+    });
+  }
+
+  async remove(id: string) {
+    return this.bookModel.findByIdAndRemove({ _id: id }).exec();
+  }
+
+  async addComment(id: string, comment: any) { <1>
+    let book: BookDocument = await this.bookModel.findById(id); <2>
+    book.comments.push(comment); <3>
+    book.save(); <4>
+    return book;
+  }
+}
+----
+<1> Método para añadir un comentario a un libro
+<2> Recuperar el libro por su identificador
+<3> Añadir el comentario al array de comentarios
+<4> Guardar el libro
+
+### Modificación del controlador
+
+Ahora vamos a añadir una nueva ruta al controlador de los libros que realice una operación `POST`. La ruta será `/books/{id}/comment` y hace referencia a que al libro `{id}` se le va a crear un comentario. El comentario se le pasará en el cuerpo de la petición de acuerdo con el DTO de creación de comentarios definido anteriormente.
+
+[source, ts]
+----
+import { Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { BooksService } from './books.service';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { ParseObjectIdPipe } from '../utilities/parse-object-id-pipe.pipe';
+import { CreateCommentDto } from './dto/create-comment.dto';
+
+@Controller('books')
+@ApiTags('book')
+export class BooksController {
+  constructor(private readonly booksService: BooksService) {}
+
+  @Post()
+  create(@Body() createBookDto: CreateBookDto) {
+    return this.booksService.create(createBookDto);
+  }
+
+  @Get()
+  findAll(@Req() request: Request) {
+    return this.booksService.findAll(request);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string) {
+    return this.booksService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() updateBookDto: UpdateBookDto,
+  ) {
+    return this.booksService.update(id, updateBookDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseObjectIdPipe) id: string) {
+    return this.booksService.remove(id);
+  }
+
+  @Post(':id/comment') <1>
+  async addComment(
+    @Param('id', ParseObjectIdPipe) id: string, <2>
+    @Body() comment: CreateCommentDto, <3>
+  ) {
+    return this.booksService.addComment(id, comment); <4>
+  }
+}
+----
+<1> Ruta para añadir los comentarios
+<2> Captura del parámetro y paso por el _pipe_ de comprobación de identificadores de MongoDB
+<3> Paso del comentario en el cuerpo de la petición
+<4> Llamada al método de incorporación de comentarios
+
+### Prueba del endpoint
+
+Ya sólo nos falta ver en acción lo que hemos desarrollado para la incorporación de comentarios a los libros. Si desplegamos el nuevo endpoint de la API para añadir libros, crearemos un nuevo comentario pasándole el identificador del libro y dejaremos el comentario predeterminado.
+
+image::añadir-comentario-predeterminado.png[]
+
+Tras añadirlo, la respuesta del servidor sería el libro con el comentario añadido incorporando el usuario que ha realizado el comentario.
+
+[source, json]
+----
+{
+  "_id": "62594f8ddae1eebf6c6c209c",
+  "genre": "Web Development",
+  "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+  "author": "Jay Bell",
+  "pages": 350,
+  "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+  "keywords": [
+    "NestJS",
+    "REST API"
+  ],
+  "__v": 1,
+  "comments": [
+    { <1>
+      "title": "Esperaba más",
+      "stars": 3,
+      "comment": "Nisi officia fugiat id nulla laboris ex. Sit laboris culpa occaecat occaecat aliquip dolor non excepteur reprehenderit.",
+      "username": "johndoe", <2>
+      "_id": "625bade7c73a12ec6c5c9c16"
+    }
+  ]
+}
+----
+<1> Comentario añadido
+<2> Identificador del usuario que ha realizado el comentario
+
+Añadiremos un segundo comentario al mismo libro a cargo de `marysmith` con el contenido siguiente.
+
+[source, json]
+----
+{
+  "title": "Me encantó",
+  "stars": 5,
+  "comment": "Non consequat laborum pariatur et tempor fugiat excepteur. Incididunt minim voluptate nostrud Lorem ullamco consectetur sint veniam amet non aliqua proident. Cillum reprehenderit veniam nulla ex eiusmod id sit tempor. Consectetur nostrud Lorem duis culpa sit incididunt aliqua.",
+  "username": "marysmith",
+}
+----
+
+image::añadir-segundo-comentario.png[]
+
+El servidor devolvería ahora el libro con los dos comentarios añadidos.
+
+[source, json]
+----
+{
+  "_id": "62594f8ddae1eebf6c6c209c",
+  "genre": "Web Development",
+  "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+  "author": "Jay Bell",
+  "pages": 350,
+  "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+  "keywords": [
+    "NestJS",
+    "REST API"
+  ],
+  "__v": 1,
+  "comments": [
+    { <1>
+      "title": "Esperaba más",
+      "stars": 3,
+      "comment": "Nisi officia fugiat id nulla laboris ex. Sit laboris culpa occaecat occaecat aliquip dolor non excepteur reprehenderit.",
+      "username": "johndoe",
+      "_id": "625bade7c73a12ec6c5c9c16"
+    },
+    { <2>
+      "title": "Me encantó",
+      "stars": 5,
+      "comment": "Non consequat laborum pariatur et tempor fugiat excepteur. Incididunt minim voluptate nostrud Lorem ullamco consectetur sint veniam amet non aliqua proident. Cillum reprehenderit veniam nulla ex eiusmod id sit tempor. Consectetur nostrud Lorem duis culpa sit incididunt aliqua.",
+      "username": "marysmith",
+      "_id": "625baedcc73a12ec6c5c9c19"
+    }
+  ]
+}
+----
+<1> Primer comentario
+<2> Segundo comentario
+
+Si consultamos los libros con cualquiera de los dos endpoints disponibles, ahora cada libro incorporá sus comentarios.
+
+### Incoporación de los datos relacionados
+
+La familia de los métodos `find` de Mongoose ofrece la posibilidad de añadir los datos relacionados a un resultado. Esto nos permite incorporar a los comentarios los datos completos de los usuarios en las consultas (p.e. país, nombre completo, ...). Recordemos que en cada comentario sólo se guardaba el `username` de un usuario (su identificador). El resto de los datos de los usuarios están en la colección `users`.
+
+El método `populate` añadido a una operación de la famila `find` permite esa _hidratación_ con datos relacionados. Al método `populate` se le pasa el campo que se quiere enriquecer. De forma predeterminada, se poblará siguiendo la relación definida en el esquema. No obstante, es posible poblar un campo con cualquier conjunto de datos.
+
+A continuación se muestra cómo quedaría finalmente el servicio de los libros al que se ha incorporado el método `populate` del campo `comments.username` a los dos métodos `find` implementados.
+
+.Archivo `src/books/books.service.ts`
+----
+import { Injectable } from '@nestjs/common';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Book, BookDocument } from './schemas/book.schema';
+import { Model } from 'mongoose';
+import { Request } from 'express';
+
+@Injectable()
+export class BooksService {
+  constructor(
+    @InjectModel(Book.name) private readonly bookModel: Model<BookDocument>,
+  ) {}
+
+  async create(createBookDto: CreateBookDto): Promise<Book> {
+    return this.bookModel.create(createBookDto);
+  }
+
+  async findAll(request: Request): Promise<Book[]> {
+    return this.bookModel
+      .find(request.query)
+      .populate({ path: 'comments.username' }) <1>
+      .setOptions({ sanitizeFilter: true })
+      .exec();
+  }
+
+  async findOne(id: string): Promise<Book> {
+    return this.bookModel
+      .findOne({ _id: id })
+      .populate({ path: 'comments.username' }) <2>
+      .exec();
+  }
+
+  async update(id: string, updateBookDto: UpdateBookDto): Promise<Book> {
+    return this.bookModel.findOneAndUpdate({ _id: id }, updateBookDto, {
+      new: true,
+    });
+  }
+
+  async remove(id: string) {
+    return this.bookModel.findByIdAndRemove({ _id: id }).exec();
+  }
+
+  async addComment(id: string, comment: any) {
+    let book: BookDocument = await this.bookModel.findById(id);
+    book.comments.push(comment);
+    book.save();
+    return book;
+  }
+}
+----
+<1> Incorporación de datos de usuario
+<2> Incorporación de datos de usuario
+
 // (Entrar en modo no numerado de apartados)
 :numbered!: 
 

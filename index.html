@@ -5,7 +5,7 @@
 <meta http-equiv="X-UA-Compatible" content="IE=edge">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="generator" content="Asciidoctor 2.0.8.dev">
-<meta name="author" content="Servicio de las Tecnologías de la Información y las Comunicaciones - Universidad de Almería">
+<meta name="author" content="Manuel Torres - Departamento de Informática. Universidad de Almería">
 <title>Creación de una API REST para MongoDB con NestJS</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css?family=Open+Sans:300,300italic,400,400italic,600,600italic%7CNoto+Serif:400,400italic,700,700italic%7CDroid+Sans+Mono:400,700">
 <style>
@@ -441,7 +441,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div id="header">
 <h1>Creación de una API REST para MongoDB con NestJS</h1>
 <div class="details">
-<span id="author" class="author">Servicio de las Tecnologías de la Información y las Comunicaciones - Universidad de Almería</span><br>
+<span id="author" class="author">Manuel Torres - Departamento de Informática. Universidad de Almería</span><br>
 </div>
 <div id="toc" class="toc2">
 <div id="toctitle">Tabla de contenidos</div>
@@ -473,7 +473,18 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 </ul>
 </li>
 <li><a href="#truerechazo-de-peticiones-con-_id-inválido">6. Rechazo de peticiones con <code>_id</code> inválido</a></li>
-<li><a href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose">7. Anexo I. Configuración de MongoDB local con Docker Compose</a></li>
+<li><a href="#trueincorporación-de-comentarios">7. Incorporación de comentarios</a>
+<ul class="sectlevel2">
+<li><a href="#truecreación-del-esquema-3">7.1. Creación del esquema</a></li>
+<li><a href="#trueincorporación-de-los-comentarios-al-esquema-de-los-libros">7.2. Incorporación de los comentarios al esquema de los libros</a></li>
+<li><a href="#truecreación-del-dto-3">7.3. Creación del DTO</a></li>
+<li><a href="#trueimplementación-del-método-de-creación-de-comentarios">7.4. Implementación del método de creación de comentarios</a></li>
+<li><a href="#truemodificación-del-controlador-3">7.5. Modificación del controlador</a></li>
+<li><a href="#trueprueba-del-endpoint">7.6. Prueba del endpoint</a></li>
+<li><a href="#trueincoporación-de-los-datos-relacionados">7.7. Incoporación de los datos relacionados</a></li>
+</ul>
+</li>
+<li><a href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose">Anexo I. Configuración de MongoDB local con Docker Compose</a></li>
 </ul>
 </div>
 </div>
@@ -482,7 +493,7 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="sectionbody">
 <div class="imageblock">
 <div class="content">
-<img src="./images/logocloudstic.png" alt="logocloudstic">
+<img src="./images/di.png" alt="di">
 </div>
 </div>
 </div>
@@ -491,8 +502,33 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <h2 id="trueresumen"><a class="anchor" href="#trueresumen"></a>Resumen</h2>
 <div class="sectionbody">
 <div class="paragraph">
+<p>MongoDB es la base de datos NoSQL más popular debido a su sencillez, velocidad y a su capaciudad de escalado. Su versatilidad y su rapidez hacen que esté cada vez más presente en el desarrollo de aplicaciones de bases de datos, especialmente en aquellas que pueden crecer a escala Internet. En este tutorial veremos cómo crear una API REST NestJS para MongoDB con Mongoose, el ODM de referencia de MongoDB para Node.js.</p>
+</div>
+<div class="ulist">
 <div class="title">Objetivos</div>
-<p>*</p>
+<ul>
+<li>
+<p>Entender los conceptos de esquema y modelo en Mongoose.</p>
+</li>
+<li>
+<p>Definir atributos multivaluados en un esquema.</p>
+</li>
+<li>
+<p>Crear esquemas basados en otros esquemas.</p>
+</li>
+<li>
+<p>Aprender a crear referencias entre esquemas diferentes.</p>
+</li>
+<li>
+<p>Aprender a usar las técnicas para la creación de una API REST NestJS para MongoDB con Mongoose.</p>
+</li>
+<li>
+<p>Filtrar datos de una petición mediante el uso de parámetros de consulta en la URL.</p>
+</li>
+<li>
+<p>Introducir el uso de <em>pipes</em> para comprobar la validez de parámetros de entrada de la API.</p>
+</li>
+</ul>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -513,7 +549,54 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <div class="sect1">
 <h2 id="trueintroducción"><a class="anchor" href="#trueintroducción"></a>1. Introducción</h2>
 <div class="sectionbody">
-
+<div class="paragraph">
+<p>MongoDB es una base de datos que almacena documentos JSON y ofrece una gran escalabilidad y flexibilidad. Actualmente, de acuerdo con <a href="https://db-engines.com/en/ranking">DB-Engines Ranking</a>, es la base de datos NoSQL más popular. Su modelo de datos basado en documentos ofrece una forma de trabajar muy sencilla e intuitiva para desarrolladores.</p>
+</div>
+<div class="paragraph">
+<p><a href="https://mongoosejs.com/">Mongoose</a> es un ODM (Object Document Mapper) para Node.js análogo a los ORM (Object Relational Mapper) como Hibernate para Java, Doctrine para PHP o SQLAlchemy para Python. A pesar de que MongoDB es una base de datos sin esquema, Mongoose proporciona una solución basada en esquemas que ofrece un sistema de tipos, validaciones, construcción de consultas y otras características que lo hacen una opción muy interesante para el desarrollo en de una API REST NestJS si la base de datos en MongoDB.</p>
+</div>
+<div class="paragraph">
+<p>En este tutorial veremos cómo crear una API REST en NestJS para un ejemplo sencillo de un catálogo de libros en MongoDB y programado con Mongoose. Aunque el ejemplo es sencillo, introduciremos las cuestiones cotidianas que se suelen presentar al trabajar con MongoDB, como son el tratamiento que hace MongoDB de los atributos multivaluados, el manejo de relaciones <code>1:M</code> como agregados y la referencia a objetos de otras colecciones de documentos.</p>
+</div>
+<div class="paragraph">
+<p>La figura siguiente ilustra el modelo de agregados que usaremos en este tutorial.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/modelo-de-agregados.png" alt="modelo de agregados">
+</div>
+</div>
+<div class="paragraph">
+<p>Básicamente guardamos datos de libros, una lista de palabras clave de cada libro y los distintos comentarios que se realizan sobre ellos. Cada comentario es realizado por una persona y guardaremos una serie de datos de cada persona.</p>
+</div>
+<div class="paragraph">
+<p>Con MongoDB no crearemos una colección para cada una de las entidades de dominio que aparecen en la figura (<code>Book</code>, <code>Comment</code> y <code>User</code>) y otra colección para <code>keywords</code> de <code>Book</code> (que aparece como un array de cadenas), lo que haría un total de cuatro colecciones. Si hiciésemos eso estaríamos utilizando implícitamente las técnicas de diseño de bases de datos relacionales en MongoDB. Y el único cambio que estaríamos haciendo es que en lugar de almacenar filas, estaríamos almacenando documentos JSON. Pero esto no es una buena opción porque no estaríamos aprovechando las ventajas que puede aportar MongoDB. Usar MongoDB implica algo más que cambiar los registros por documentos JSON. Implica cambiar la técnica de diseño. En este caso crearíamos una única colección para todo el agregado, que se corresponde con la zona sombreada de la figura. Denominaremos <code>Book</code> a esa colección y en su esquema habrá:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Los campos <em>básicos</em> del libro (<code>id, title, genre, description, author, pages, image_url</code>).</p>
+</li>
+<li>
+<p>Un campo para el atributo multivaluado <code>keywords</code>. Se definiría como una array de cadenas (primer cambio respecto al enfoque relacional).</p>
+</li>
+<li>
+<p>Un campo para la lista de comentarios <code>comments</code>. Se definiría como un array de documentos de tipo <code>Comment</code>(segundo cambio respecto al enfoque relacional). En el esquema <code>Comment</code> el campo <code>username</code> será una referencia al esquema de la colección <code>User</code>.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>Vemos que la relación <code>1:M</code> queda embebida dentro de los libros. En cambio, no incluimos los datos del usuario en cada comentario para no repetir todos los datos de un usuario cada vez que un usuario realice un comentario.</p>
+</div>
+<div class="paragraph">
+<p>Por tanto, para este ejemplo tendremos únicamente dos colecciones: <code>Book</code> y <code>User</code>. Como escenario de aplicación se puede pensar en una página de un catálogo de libros de una tienda online de libros, en la que para cada libro se mostrarán tanto los datos del libro, como sus palabras clave y sus comentarios. Así, cada vez que se recupere un libro se recupera con todos los datos hay que mostrar.</p>
+</div>
+<div class="paragraph">
+<p>Una implementación relacional habría creado 4 tablas (<code>Book</code>,<code>Book-Keywords</code>, <code>Books-Comments</code> y <code>Comment-User</code>). Este enfoque, además de ser más intuitivo, aumenta la velocidad de las consultas ya que se evitan los joins para recuperar las palabras clave y los comentarios de un libro. Pero ahí no queda todo. Dado que los datos relacionados se almacenan juntos, la base de datos puede escalar horizontalmente añadiendo más nodos a un cluster sin penalizar su rendimiento. Así, unos libros estarán en un nodo y otros estarán en otros, pero no habrá penalización en los joins ya que las palabras clave y los comentarios de cada libro están almacenados junto al libro, y se recuperarán juntos.</p>
+</div>
+<div class="paragraph">
+<p>Casos de uso como aplicaciones IoT (p.e. agregando las medidas de los dispositivos, eventos en una cadena de producción, meteorología), Gaming o aplicaciones de streaming (p.e. guardando las últimas posiciones, eventos, reproducciones, posición de reproducción), Vistas simplificadas de los datos más importantes (p.e. datos calculados, colecciones de datos resumidos) y demás, hacen hoy día de MongoDB una solución de almacenamiento a considerar.</p>
+</div>
 </div>
 </div>
 <div class="sect1">
@@ -573,7 +656,7 @@ bootstrap();</code></pre>
 </tr>
 <tr>
 <td><i class="conum" data-value="2"></i><b>2</b></td>
-<td>Prepración de la configuración creada para Swagger</td>
+<td>Preparación de la configuración creada para Swagger</td>
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
@@ -582,7 +665,7 @@ bootstrap();</code></pre>
 </table>
 </div>
 <div class="paragraph">
-<p>A continuación generamos como el CLI de NestJS dos <code>resource</code> para libros y usuarios aceptando los valores predeterminados de si queremos crear los recursos para una API REST y que genere los endpoints para CRUD.</p>
+<p>A continuación generamos con el CLI de NestJS dos <code>resource</code> para libros y usuarios aceptando los valores predeterminados de si queremos crear los recursos para una API REST y que genere los endpoints para CRUD.</p>
 </div>
 <div class="listingblock">
 <div class="content">
@@ -591,15 +674,15 @@ $ nest generate resource users</code></pre>
 </div>
 </div>
 <div class="paragraph">
-<p>La generación de un <code>resource</code> con el CLI de NestJS genera los archivos de los servicios, controladores, módulos, DTOs y entidades. Además, proporciona una pequeña implementación para cada uno de ellos. En NestJS:</p>
+<p>La generación de un <code>resource</code> con el CLI de NestJS genera los archivos de los servicios, controladores, módulos, DTOs y entidades. Además, proporciona una pequeña implementación inicial para cada uno de ellos. En NestJS:</p>
 </div>
 <div class="ulist">
 <ul>
 <li>
-<p>Los controladores se encargan de gestionar las peticiones que llegan y devuelven las respuestas al cliente</p>
+<p>Los controladores se encargan de gestionar las peticiones que llegan y devuelven las respuestas al cliente.</p>
 </li>
 <li>
-<p>Los servicios se encargan de la resolver las peticiones. En nuestro caso se encargan de la interacción con MongoDB recuperando y almacenando documentos.</p>
+<p>Los servicios se encargan de resolver las peticiones. En nuestro caso se encargan de la interacción con MongoDB recuperando y almacenando documentos.</p>
 </li>
 <li>
 <p>Los módulos permiten organizar la estructura de la aplicación e incluyen los controladores, servicios y los módulos que a su vez usan.</p>
@@ -727,7 +810,7 @@ export class AppModule {}</code></pre>
 <h2 id="trueconfiguración-del-módulo-de-libros"><a class="anchor" href="#trueconfiguración-del-módulo-de-libros"></a>4. Configuración del módulo de libros</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>De acuerdo con el diagrama de <a href="#trueintroducción">Introducción</a> tenemos objetos de dominio para libros y para los usuarios que realizan los comentarios sobre los libros. En esta sección nos centraremos sólo en los libros, sin incluir aún la relación con los autores de los comentarios. La inclusión de la referencia a los autores la dejamos para la sección &lt;&lt;$$$&gt;&gt;</p>
+<p>De acuerdo con el diagrama de <a href="#trueintroducción">Introducción</a> tenemos objetos de dominio para libros y para los usuarios que realizan los comentarios sobre los libros. En esta sección nos centraremos sólo en los libros, sin incluir aún la relación con los autores de los comentarios. La inclusión de la referencia a los autores la dejamos para la sección <a href="#trueincorporación-de-comentarios">Incorporación de comentarios</a></p>
 </div>
 <div class="admonitionblock tip">
 <table>
@@ -1419,12 +1502,19 @@ export class BooksService {
 </tr>
 </table>
 </div>
-<div class="exampleblock">
-<div class="content">
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
 <div class="paragraph">
 <p><code>request.query</code> devuelve una lista clave-valor con cada uno de los campos de filtrado y su valor correspondiente introducidos en la URL.</p>
 </div>
-</div>
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect2">
@@ -2182,12 +2272,19 @@ export class UsersService {
 </tr>
 </table>
 </div>
-<div class="exampleblock">
-<div class="content">
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
 <div class="paragraph">
 <p><code>request.query</code> devuelve una lista clave-valor con cada uno de los campos de filtrado y su valor correspondiente introducidos en la URL.</p>
 </div>
-</div>
+</td>
+</tr>
+</table>
 </div>
 </div>
 <div class="sect2">
@@ -2440,15 +2537,687 @@ export class BooksController {
 </tr>
 <tr>
 <td><i class="conum" data-value="3"></i><b>3</b></td>
-<td>Uso de <code>ParseObjectIdPipe</code> para la eliminación de un libro
-:numbered!:</td>
+<td>Uso de <code>ParseObjectIdPipe</code> para la eliminación de un libro</td>
 </tr>
 </table>
 </div>
 </div>
 </div>
 <div class="sect1">
-<h2 id="trueanexo-i-configuración-de-mongodb-local-con-docker-compose"><a class="anchor" href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose"></a>7. Anexo I. Configuración de MongoDB local con Docker Compose</h2>
+<h2 id="trueincorporación-de-comentarios"><a class="anchor" href="#trueincorporación-de-comentarios"></a>7. Incorporación de comentarios</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Cuando creamos el esquema para los libros, el campo <code>keywords</code> fue definido como un array. En una base de datos relacional habríamos definido una tabla aparte para guardar esa lista de valores. Sin embargo, en una base de datos como MongoDB las técnicas de diseño son diferentes y ese tipo de campos multivaluados se guardan directamente en un array.</p>
+</div>
+<div class="paragraph">
+<p>El campo <code>keywords</code> fue definido como un array de cadenas en el esquema de los libros.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">...
+
+@Schema()
+export class Book {
+  ...
+
+  @Prop([String]) <i class="conum" data-value="1"></i><b>(1)</b>
+  keywords: string[]; <i class="conum" data-value="2"></i><b>(2)</b>
+}
+
+...</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Array de <code>String</code> MongoDB</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Palabras clave como un array de cadenas</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Para tipos no primitivos (como arrays, documentos o una combinación de ellos) hay que añadir en <code>@Prop()</code> el tipo de datos que se va usar.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>A continuación vamos a modificar el esquema de los libros para añadir un nuevo campo para los comentarios. De acuerdo con el esquema de <a href="#trueintroducción">Introducción</a> los comentarios también son un campo multivaluado. Sin embargo, a diferencia de las palabras clave, no son un array de un tipo primitivo. Los comentarios son un array de documentos. En tal caso, crearemos un esquema para ellos.</p>
+</div>
+<div class="sect2">
+<h3 id="truecreación-del-esquema-3"><a class="anchor" href="#truecreación-del-esquema-3"></a>7.1. Creación del esquema</h3>
+<div class="paragraph">
+<p>Inicialmente, y de acuerdo con el diagrama de <a href="#trueintroducción">Introducción</a>, exceptuando el identificador, los campos de los comentarios son los siguientes:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>title</code> como título del comentario.</p>
+</li>
+<li>
+<p><code>stars</code> como valoración en forma de estrellas que tiene el comentario.</p>
+</li>
+<li>
+<p><code>comment</code> como descripción del comentario.</p>
+</li>
+<li>
+<p><code>username</code> como autor del comentario.</p>
+</li>
+</ul>
+</div>
+<div class="paragraph">
+<p>En este esquema prestamos también atención a que los autores de los comentarios son los usuarios que tenemos definidos en el esquema <code>User</code>.  Esto lo implementaremos mediante referencias en Mongoose.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/books/schemas/comment.schema.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="bash" class="language-bash hljs">import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
+import { ApiProperty } from '@nestjs/swagger';
+import { Document } from 'mongoose';
+import { User } from '../../users/schemas/user.schema';
+import mongoose from 'mongoose';
+
+export type CommentDocument = Comment &amp; Document;
+
+@Schema()
+export class Comment {
+  @Prop()
+  title: string;
+
+  @Prop()
+  stars: number;
+
+  @Prop()
+  comment: string;
+
+  @Prop({ type: mongoose.Schema.Types.String, ref: 'User' }) <i class="conum" data-value="1"></i><b>(1)</b>
+  username: User; <i class="conum" data-value="2"></i><b>(2)</b>
+}
+
+export const CommentSchema = SchemaFactory.createForClass(Comment);</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Tipo como una referencia a los usuarios en los que la clave es un <code>String</code>, no un <code>ObjectId</code></td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Creador del comentario de tipo <code>User</code></td>
+</tr>
+</table>
+</div>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Tipos de las referencias</div>
+<div class="paragraph">
+<p>Una referencia introduce una relación entre un campo y un esquema Mongoose. La referencia se configura en el decorador <code>@Prop()</code>. Hay que tener en cuenta dos cuestiones:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p>Con <code>ref</code> definimos el tipo de datos del campo que se está definiendo. Lo hacemos indicando el esquema de destino.</p>
+</li>
+<li>
+<p><code>type</code> es el tipo de datos Mongoose con el que enlaza la propiedad que se está definiendo. En el ejemplo de los usuarios, como el <code>_id</code> lo configuramos para que fuera el nombre de usuario y éste lo definimos como tipo cadena, la referencia del destino será a un tipo <code>mongoose.Schema.Types.String</code>. Si el campo referenciado fuese un identificador hexadecimal MongoDB, el tipo de datos sería <code>mongoose.Schema.Types.ObjectId</code></p>
+</li>
+</ul>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trueincorporación-de-los-comentarios-al-esquema-de-los-libros"><a class="anchor" href="#trueincorporación-de-los-comentarios-al-esquema-de-los-libros"></a>7.2. Incorporación de los comentarios al esquema de los libros</h3>
+<div class="paragraph">
+<p>Una vez definido el esquema de los comentarios podemos modificar el esquema de los libros para añadirle un nuevo campo para los comentarios. Su tipo de datos será un array de comentarios.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/books/schemas/book.schema.ts</code></div>
+<div class="content">
+<pre>import { Schema, Prop, SchemaFactory } from '@nestjs/mongoose';
+import { Document } from 'mongoose';
+import { CommentSchema } from './comment.schema';
+
+export type BookDocument = Book &amp; Document;
+
+@Schema()
+export class Book {
+  @Prop()
+  genre: string;
+
+  @Prop()
+  description: string;
+
+  @Prop()
+  author: string;
+
+  @Prop()
+  pages: number;
+
+  @Prop()
+  image_url: string;
+
+  @Prop([String])
+  keywords: string[];
+
+  @Prop([CommentSchema]) <i class="conum" data-value="1"></i><b>(1)</b>
+  comments: Comment[]; <i class="conum" data-value="2"></i><b>(2)</b>
+}
+
+export const BookSchema = SchemaFactory.createForClass(Book);</pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Configuración del tipo porque no es un tipo básico</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Tipo de los comentarios</td>
+</tr>
+</table>
+</div>
+<div class="admonitionblock note">
+<table>
+<tr>
+<td class="icon">
+<i class="fa icon-note" title="Note"></i>
+</td>
+<td class="content">
+<div class="paragraph">
+<p>Como el tipo de datos de los comentarios no es un tipo primitivo, hay que indicar su tipo en el decorador <code>@Prop</code>.</p>
+</div>
+</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Al guardar los cambios se modificarán los documentos almacenados en la colección <code>books</code> y les habrá añadido un campo <code>comments</code> cuyo tipo es un array de comentarios.</p>
+</div>
+<div class="paragraph">
+<p>Si probamos cualquiera de los endpoints de recuperación de libros veremos que ahora los libros tienen la lista de comentarios. A continuación se muestra lo que devolvería el endpoint <code>GET /users</code>.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">[
+  {
+    "_id": "62594f8ddae1eebf6c6c209c",
+    "genre": "Web Development",
+    "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+    "author": "Jay Bell",
+    "pages": 350,
+    "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+    "keywords": [
+      "NestJS",
+      "REST API"
+    ],
+    "__v": 0,
+    "comments": [] <i class="conum" data-value="1"></i><b>(1)</b>
+  }
+]</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Comentarios como un array</td>
+</tr>
+</table>
+</div>
+<div class="sidebarblock">
+<div class="content">
+<div class="title">Los agregados en una base de datos NoSQL</div>
+<div class="paragraph">
+<p>La definición de un esquema para los comentarios no supone la creación de una nueva colección. Para definir una colección a partir de un esquema en Mongoose hay que crear un <em>modelo</em>. En el tutorial hemos creado dos modelos al inyectarlos como dependencia en los servicios creados para los libros y los usuarios. Crear un esquema para los comentarios simplemente define un tipo de documento que queda disponible para definir campos en un esquema Mongoose.</p>
+</div>
+<div class="paragraph">
+<p>La idea de incorporación de datos anidados choca bastante inicialmente si se tiene una visión relacional profunda. La creación de estas estructuras complejas de arrays, subdocumentos y cualquier combinación de ellos se corresponde con el concepto de <em>agregado</em> de las bases de datos NoSQL. En una base de datos relacional habríamos segregado los comentarios a una tabla aparte debido a la relación <code>1:M</code> que hay entre los libros y los comentarios. Sin embargo, el criterio de diseño en una base de datos NoSQL es que si los datos se van a recuperar juntos, se deben almacenar también juntos.</p>
+</div>
+<div class="paragraph">
+<p>El planteamiento de los <em>agregados</em> reduce enormemente la complejidad de los esquemas de la base de datos y aumenta la velocidad de las consultas, ya que se reducen las operaciones de <em>join</em> porque los datos relacionados están almacenados junto a los datos que los referencian. Por tanto, es muy importante conocer a priori los tipos de consultas que vamos a tener porque condicionarán e influirán en el diseño de la base de datos para definir los agregados.</p>
+</div>
+<div class="paragraph">
+<p>Para una visión panorámica sobre las bases de datos NoSQL, consulta <a href="https://www.thoughtworks.com/insights/blog/nosql-databases-overview">NoSQL Databases: An Overview
+</a>. Si no conoces las bases de datos NoSQL, tras su lectura cambiará tu forma de ver las bases de datos.</p>
+</div>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="truecreación-del-dto-3"><a class="anchor" href="#truecreación-del-dto-3"></a>7.3. Creación del DTO</h3>
+<div class="paragraph">
+<p>El DTO define la estructura de un objeto que se pasa en el cuerpo de una petición HTTP. Inicialmente, y de acuerdo con el diagrama de <a href="#trueintroducción">Introducción</a>, para un comentario tendremos los mismos campos que para el esquema definido anteriormente. Cuando se guarden los comentarios, MongoDB les asignará un <code>_id</code> porque no se ha definido ningún <code>_id</code> específico en el esquema de los comentarios, pero esto es cosa de MongoDB. Desde el punto de vista del DTO, los datos que nos interesan son:</p>
+</div>
+<div class="ulist">
+<ul>
+<li>
+<p><code>title</code> como título del comentario.</p>
+</li>
+<li>
+<p><code>stars</code> como valoración en forma de estrellas que tiene el comentario.</p>
+</li>
+<li>
+<p><code>comment</code> como descripción del comentario.</p>
+</li>
+<li>
+<p><code>username</code> como autor del comentario.</p>
+</li>
+</ul>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/books/dto/create-comment.dto.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { ApiProperty } from '@nestjs/swagger';
+import { User } from '../../users/schemas/user.schema';
+
+export class CreateCommentDto {
+  @ApiProperty({ example: 'Esperaba más' })
+  readonly title: string;
+
+  @ApiProperty({
+    example: 3,
+  })
+  readonly stars: number;
+
+  @ApiProperty({
+    example:
+      'Nisi officia fugiat id nulla laboris ex. Sit laboris culpa occaecat occaecat aliquip dolor non excepteur reprehenderit.',
+  })
+  readonly comment: string;
+
+  @ApiProperty({ example: 'johndoe' })
+  readonly username: User;
+}</code></pre>
+</div>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trueimplementación-del-método-de-creación-de-comentarios"><a class="anchor" href="#trueimplementación-del-método-de-creación-de-comentarios"></a>7.4. Implementación del método de creación de comentarios</h3>
+<div class="paragraph">
+<p>A continuación hay que modificar el servicio de comentarios para implementar un nuevo método que permita añadir comentarios a un libro. El nuevo método recibirá dos argumentos: el <code>id</code> del libro al que hay que añadir el comentario y el objeto con el comentario. Su implementación consistirá en recuperar el libro, añadir el comentario al array de comentarios del libro y guardar el libro.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/books/books.service.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Injectable } from '@nestjs/common';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Book, BookDocument } from './schemas/book.schema';
+import { Model } from 'mongoose';
+import { Request } from 'express';
+
+@Injectable()
+export class BooksService {
+  constructor(
+    @InjectModel(Book.name) private readonly bookModel: Model&lt;BookDocument&gt;,
+  ) {}
+
+  async create(createBookDto: CreateBookDto): Promise&lt;Book&gt; {
+    return this.bookModel.create(createBookDto);
+  }
+
+  async findAll(request: Request): Promise&lt;Book[]&gt; {
+    return this.bookModel
+      .find(request.query)
+      .setOptions({ sanitizeFilter: true })
+      .exec();
+  }
+
+  async findOne(id: string): Promise&lt;Book&gt; {
+    return this.bookModel.findOne({ _id: id }).exec();
+  }
+
+  async update(id: string, updateBookDto: UpdateBookDto): Promise&lt;Book&gt; {
+    return this.bookModel.findOneAndUpdate({ _id: id }, updateBookDto, {
+      new: true,
+    });
+  }
+
+  async remove(id: string) {
+    return this.bookModel.findByIdAndRemove({ _id: id }).exec();
+  }
+
+  async addComment(id: string, comment: any) { <i class="conum" data-value="1"></i><b>(1)</b>
+    let book: BookDocument = await this.bookModel.findById(id); <i class="conum" data-value="2"></i><b>(2)</b>
+    book.comments.push(comment); <i class="conum" data-value="3"></i><b>(3)</b>
+    book.save(); <i class="conum" data-value="4"></i><b>(4)</b>
+    return book;
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Método para añadir un comentario a un libro</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Recuperar el libro por su identificador</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Añadir el comentario al array de comentarios</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Guardar el libro</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="truemodificación-del-controlador-3"><a class="anchor" href="#truemodificación-del-controlador-3"></a>7.5. Modificación del controlador</h3>
+<div class="paragraph">
+<p>Ahora vamos a añadir una nueva ruta al controlador de los libros que realice una operación <code>POST</code>. La ruta será <code>/books/{id}/comment</code> y hace referencia a que al libro <code>{id}</code> se le va a crear un comentario. El comentario se le pasará en el cuerpo de la petición de acuerdo con el DTO de creación de comentarios definido anteriormente.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { BooksService } from './books.service';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { ParseObjectIdPipe } from '../utilities/parse-object-id-pipe.pipe';
+import { CreateCommentDto } from './dto/create-comment.dto';
+
+@Controller('books')
+@ApiTags('book')
+export class BooksController {
+  constructor(private readonly booksService: BooksService) {}
+
+  @Post()
+  create(@Body() createBookDto: CreateBookDto) {
+    return this.booksService.create(createBookDto);
+  }
+
+  @Get()
+  findAll(@Req() request: Request) {
+    return this.booksService.findAll(request);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string) {
+    return this.booksService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseObjectIdPipe) id: string,
+    @Body() updateBookDto: UpdateBookDto,
+  ) {
+    return this.booksService.update(id, updateBookDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseObjectIdPipe) id: string) {
+    return this.booksService.remove(id);
+  }
+
+  @Post(':id/comment') <i class="conum" data-value="1"></i><b>(1)</b>
+  async addComment(
+    @Param('id', ParseObjectIdPipe) id: string, <i class="conum" data-value="2"></i><b>(2)</b>
+    @Body() comment: CreateCommentDto, <i class="conum" data-value="3"></i><b>(3)</b>
+  ) {
+    return this.booksService.addComment(id, comment); <i class="conum" data-value="4"></i><b>(4)</b>
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Ruta para añadir los comentarios</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Captura del parámetro y paso por el <em>pipe</em> de comprobación de identificadores de MongoDB</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Paso del comentario en el cuerpo de la petición</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="4"></i><b>4</b></td>
+<td>Llamada al método de incorporación de comentarios</td>
+</tr>
+</table>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trueprueba-del-endpoint"><a class="anchor" href="#trueprueba-del-endpoint"></a>7.6. Prueba del endpoint</h3>
+<div class="paragraph">
+<p>Ya sólo nos falta ver en acción lo que hemos desarrollado para la incorporación de comentarios a los libros. Si desplegamos el nuevo endpoint de la API para añadir libros, crearemos un nuevo comentario pasándole el identificador del libro y dejaremos el comentario predeterminado.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/añadir-comentario-predeterminado.png" alt="añadir comentario predeterminado">
+</div>
+</div>
+<div class="paragraph">
+<p>Tras añadirlo, la respuesta del servidor sería el libro con el comentario añadido incorporando el usuario que ha realizado el comentario.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+  "_id": "62594f8ddae1eebf6c6c209c",
+  "genre": "Web Development",
+  "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+  "author": "Jay Bell",
+  "pages": 350,
+  "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+  "keywords": [
+    "NestJS",
+    "REST API"
+  ],
+  "__v": 1,
+  "comments": [
+    { <i class="conum" data-value="1"></i><b>(1)</b>
+      "title": "Esperaba más",
+      "stars": 3,
+      "comment": "Nisi officia fugiat id nulla laboris ex. Sit laboris culpa occaecat occaecat aliquip dolor non excepteur reprehenderit.",
+      "username": "johndoe", <i class="conum" data-value="2"></i><b>(2)</b>
+      "_id": "625bade7c73a12ec6c5c9c16"
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Comentario añadido</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Identificador del usuario que ha realizado el comentario</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Añadiremos un segundo comentario al mismo libro a cargo de <code>marysmith</code> con el contenido siguiente.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+  "title": "Me encantó",
+  "stars": 5,
+  "comment": "Non consequat laborum pariatur et tempor fugiat excepteur. Incididunt minim voluptate nostrud Lorem ullamco consectetur sint veniam amet non aliqua proident. Cillum reprehenderit veniam nulla ex eiusmod id sit tempor. Consectetur nostrud Lorem duis culpa sit incididunt aliqua.",
+  "username": "marysmith",
+}</code></pre>
+</div>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/añadir-segundo-comentario.png" alt="añadir segundo comentario">
+</div>
+</div>
+<div class="paragraph">
+<p>El servidor devolvería ahora el libro con los dos comentarios añadidos.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+  "_id": "62594f8ddae1eebf6c6c209c",
+  "genre": "Web Development",
+  "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+  "author": "Jay Bell",
+  "pages": 350,
+  "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+  "keywords": [
+    "NestJS",
+    "REST API"
+  ],
+  "__v": 1,
+  "comments": [
+    { <i class="conum" data-value="1"></i><b>(1)</b>
+      "title": "Esperaba más",
+      "stars": 3,
+      "comment": "Nisi officia fugiat id nulla laboris ex. Sit laboris culpa occaecat occaecat aliquip dolor non excepteur reprehenderit.",
+      "username": "johndoe",
+      "_id": "625bade7c73a12ec6c5c9c16"
+    },
+    { <i class="conum" data-value="2"></i><b>(2)</b>
+      "title": "Me encantó",
+      "stars": 5,
+      "comment": "Non consequat laborum pariatur et tempor fugiat excepteur. Incididunt minim voluptate nostrud Lorem ullamco consectetur sint veniam amet non aliqua proident. Cillum reprehenderit veniam nulla ex eiusmod id sit tempor. Consectetur nostrud Lorem duis culpa sit incididunt aliqua.",
+      "username": "marysmith",
+      "_id": "625baedcc73a12ec6c5c9c19"
+    }
+  ]
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Primer comentario</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Segundo comentario</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Si consultamos los libros con cualquiera de los dos endpoints disponibles, ahora cada libro incorporá sus comentarios.</p>
+</div>
+</div>
+<div class="sect2">
+<h3 id="trueincoporación-de-los-datos-relacionados"><a class="anchor" href="#trueincoporación-de-los-datos-relacionados"></a>7.7. Incoporación de los datos relacionados</h3>
+<div class="paragraph">
+<p>La familia de los métodos <code>find</code> de Mongoose ofrece la posibilidad de añadir los datos relacionados a un resultado. Esto nos permite incorporar a los comentarios los datos completos de los usuarios en las consultas (p.e. país, nombre completo, &#8230;&#8203;). Recordemos que en cada comentario sólo se guardaba el <code>username</code> de un usuario (su identificador). El resto de los datos de los usuarios están en la colección <code>users</code>.</p>
+</div>
+<div class="paragraph">
+<p>El método <code>populate</code> añadido a una operación de la famila <code>find</code> permite esa <em>hidratación</em> con datos relacionados. Al método <code>populate</code> se le pasa el campo que se quiere enriquecer. De forma predeterminada, se poblará siguiendo la relación definida en el esquema. No obstante, es posible poblar un campo con cualquier conjunto de datos.</p>
+</div>
+<div class="paragraph">
+<p>A continuación se muestra cómo quedaría finalmente el servicio de los libros al que se ha incorporado el método <code>populate</code> del campo <code>comments.username</code> a los dos métodos <code>find</code> implementados.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/books/books.service.ts</code></div>
+<div class="content">
+<pre>import { Injectable } from '@nestjs/common';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { InjectModel } from '@nestjs/mongoose';
+import { Book, BookDocument } from './schemas/book.schema';
+import { Model } from 'mongoose';
+import { Request } from 'express';
+
+@Injectable()
+export class BooksService {
+  constructor(
+    @InjectModel(Book.name) private readonly bookModel: Model&lt;BookDocument&gt;,
+  ) {}
+
+  async create(createBookDto: CreateBookDto): Promise&lt;Book&gt; {
+    return this.bookModel.create(createBookDto);
+  }
+
+  async findAll(request: Request): Promise&lt;Book[]&gt; {
+    return this.bookModel
+      .find(request.query)
+      .populate({ path: 'comments.username' }) <i class="conum" data-value="1"></i><b>(1)</b>
+      .setOptions({ sanitizeFilter: true })
+      .exec();
+  }
+
+  async findOne(id: string): Promise&lt;Book&gt; {
+    return this.bookModel
+      .findOne({ _id: id })
+      .populate({ path: 'comments.username' }) <i class="conum" data-value="2"></i><b>(2)</b>
+      .exec();
+  }
+
+  async update(id: string, updateBookDto: UpdateBookDto): Promise&lt;Book&gt; {
+    return this.bookModel.findOneAndUpdate({ _id: id }, updateBookDto, {
+      new: true,
+    });
+  }
+
+  async remove(id: string) {
+    return this.bookModel.findByIdAndRemove({ _id: id }).exec();
+  }
+
+  async addComment(id: string, comment: any) {
+    let book: BookDocument = await this.bookModel.findById(id);
+    book.comments.push(comment);
+    book.save();
+    return book;
+  }
+}</pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Incorporación de datos de usuario</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Incorporación de datos de usuario</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="trueanexo-i-configuración-de-mongodb-local-con-docker-compose"><a class="anchor" href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose"></a>Anexo I. Configuración de MongoDB local con Docker Compose</h2>
 <div class="sectionbody">
 <div class="paragraph">
 <p>Para trabajar localmente con MongoDB necesitamos una base de datos a la que conectarnos. Para no tener que complicarnos con instalaciones y no acoplar el desarrollo a nuestro equipo, en este tutorial utilizaremos una instalación local de MongoDB con Docker Compose. Trabajaremos con una base de datos denominada <code>tutorial</code> que guarda los datos en un directorio <code>mongo-data</code> respecto al directorio en el que esté el archivo <code>docker-compose.yml</code>. Esta base de datos debe coincidir con la que se use a la hora de establecer la conexión. En el tutorial hemos realizado la conexión en <code>app.module.ts</code>.</p>
@@ -2475,7 +3244,7 @@ services:
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-04-17 06:20:01 +0200
+Last updated 2022-04-17 15:04:08 +0200
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/github.min.css">
