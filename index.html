@@ -472,9 +472,8 @@ body.book #toc,body.book #preamble,body.book h1.sect0,body.book .sect1>h2{page-b
 <li><a href="#trueprueba-de-los-endpoints-2">5.7. Prueba de los endpoints</a></li>
 </ul>
 </li>
-<li><a href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose">Anexo I. Configuración de MongoDB local con Docker Compose</a></li>
-<li><a href="#trueanexo-ii-validaciones-en-mongoose">Anexo II. Validaciones en Mongoose</a></li>
-<li><a href="#trueanexo-iii-rechazo-de-peticiones-con-_id-inválido">Anexo III. Rechazo de peticiones con <code>_id</code> inválido</a></li>
+<li><a href="#truerechazo-de-peticiones-con-_id-inválido">6. Rechazo de peticiones con <code>_id</code> inválido</a></li>
+<li><a href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose">7. Anexo I. Configuración de MongoDB local con Docker Compose</a></li>
 </ul>
 </div>
 </div>
@@ -2216,7 +2215,28 @@ export class UsersService {
 </div>
 </div>
 <div class="paragraph">
-<p>Tras la inserción podemos probar que se recuperan correctamente los usuarios con el endpoint <code>GET /users</code>. Para probar el endpoint que devuelve un usuario concreto, desplegaremos en Swagger UI el endpoint <code>GET /users/{:id}</code>, pulsamemos <code>Try it out</code> para probar el endpoint e introduciremos el <code>_id</code> del usuario creado (<code>johndoe</code>). Tras pulsar <code>Execute</code> vemos que se recupera correctamente el usuario.</p>
+<p>Insertaremos también otro usuario a modo de prueba con estos valores.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">{
+  "_id": "marysmith",
+  "name": "Mary Smith",
+  "email": "marysmith@gmail.com",
+  "country": "France"
+}</code></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Tras la inserción podemos probar que se recuperan correctamente los usuarios con el endpoint <code>GET /users</code>.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/all-users.png" alt="all users">
+</div>
+</div>
+<div class="paragraph">
+<p>Para probar el endpoint que devuelve un usuario concreto, desplegaremos en Swagger UI el endpoint <code>GET /users/{:id}</code>, pulsamemos <code>Try it out</code> para probar el endpoint e introduciremos el <code>_id</code> del usuario creado (<code>johndoe</code>). Tras pulsar <code>Execute</code> vemos que se recupera correctamente el usuario.</p>
 </div>
 <div class="imageblock">
 <div class="content">
@@ -2270,10 +2290,168 @@ export class UsersService {
 </div>
 </div>
 <div class="sect1">
-<h2 id="trueanexo-i-configuración-de-mongodb-local-con-docker-compose"><a class="anchor" href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose"></a>Anexo I. Configuración de MongoDB local con Docker Compose</h2>
+<h2 id="truerechazo-de-peticiones-con-_id-inválido"><a class="anchor" href="#truerechazo-de-peticiones-con-_id-inválido"></a>6. Rechazo de peticiones con <code>_id</code> inválido</h2>
 <div class="sectionbody">
 <div class="paragraph">
-<p>Para trabajar localmente con MongoDB necesitamos una base de datos a la que conectarnos. Para no tener que complicarnos con instalaciones y no acoplar el desarrollo a nuestro equipo utilizaremos una instalación local de MongoDB con Docker Compose. Trabajaremos con una base de datos denominada <code>tutorial</code> que guarda los datos en un directorio <code>mongo-data</code> respecto al directorio en el que esté el archivo <code>docker-compose.yml</code></p>
+<p>Si en colecciones con <code>_id</code> de tipo <code>ObjectID</code> de MongoDB realizamos operaciones de búsqueda, actualización o eliminación con un <code>id</code> con formato inválido se producira un error. Si hacemos la prueba con el endpoint <code>GET /books/{id}</code> y le pasamos un <code>id</code> que no tenga el formato hexadecimal de 24 caracteres del los identificadores de MongoDB (p.e. <code>1</code>), obtendremos un error.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/error-id.png" alt="error id">
+</div>
+</div>
+<div class="paragraph">
+<p>Una solución para este problema es usar un <em>pipe</em> de NestJS para que compruebe si el identificador pasado en la URL es correcto. Si no es correcto interceptará el error y lo informará. Si es correcto, el <em>pipe</em> devuelve el valor de entrada tal cual.</p>
+</div>
+<div class="paragraph">
+<p>El <em>pipe</em> se apoya en el método <code>isObjectIdOrHexString</code> del paquete <code>mongoose</code>. que devuelve <code>true</code> si es un identificador MongoDB válido o <code>false</code> en caso contrario.</p>
+</div>
+<div class="paragraph">
+<p>A continuación se muestra el código del <em>pipe</em>, que hemos colocado en la carpeta <code>utilities</code>.</p>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>utilities/parse-object-id-pipe.pipe.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
+import mongoose from 'mongoose';
+
+@Injectable()
+export class ParseObjectIdPipe
+  implements PipeTransform&lt;any, mongoose.Types.ObjectId&gt;
+{
+  transform(value: any): mongoose.Types.ObjectId {
+    const validObjectId: boolean = mongoose.isObjectIdOrHexString(value); <i class="conum" data-value="1"></i><b>(1)</b>
+    if (!validObjectId) {
+      throw new BadRequestException('Invalid ObjectId'); <i class="conum" data-value="2"></i><b>(2)</b>
+    }
+    return value; <i class="conum" data-value="3"></i><b>(3)</b>
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Determinar si el identificador es válido para MongoDB</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Lanzar una excepción si el identificador no es válido</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Devolver el valor si el identificador es válido
+Uso del pipe en los controladores</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>El <em>pipe</em> <code>ParseObjectIdPipe</code> definido se usará en los controladores que tengan endpoints que acepten identificadores MongoDB. El <em>pipe</em> se colocará después del parámetro <code>id</code> leído en la URL.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs"> @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string) { <i class="conum" data-value="1"></i><b>(1)</b>
+    return this.booksService.findOne(id);
+  }</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Uso del <em>pipe</em> tras leer el <code>id</code> de la URL.</td>
+</tr>
+</table>
+</div>
+<div class="paragraph">
+<p>Si ahora volvemos a lanzar la petición, ya no provocará un error en la aplicación y nos informará del error adecuadamente.</p>
+</div>
+<div class="imageblock">
+<div class="content">
+<img src="./images/invalid-objectid.png" alt="invalid objectid">
+</div>
+</div>
+<div class="listingblock">
+<div class="title">Archivo <code>src/books/books.controller.ts</code></div>
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { BooksService } from './books.service';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { ParseObjectIdPipe } from '../utilities/parse-object-id-pipe.pipe';
+
+@Controller('books')
+@ApiTags('book')
+export class BooksController {
+  constructor(private readonly booksService: BooksService) {}
+
+  @Post()
+  create(@Body() createBookDto: CreateBookDto) {
+    return this.booksService.create(createBookDto);
+  }
+
+  @Get()
+  findAll(@Req() request: Request) {
+    return this.booksService.findAll(request);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string) { <i class="conum" data-value="1"></i><b>(1)</b>
+    return this.booksService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseObjectIdPipe) id: string, <i class="conum" data-value="2"></i><b>(2)</b>
+    @Body() updateBookDto: UpdateBookDto,
+  ) {
+    return this.booksService.update(id, updateBookDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseObjectIdPipe) id: string) { <i class="conum" data-value="3"></i><b>(3)</b>
+    return this.booksService.remove(id);
+  }
+}</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Uso de <code>ParseObjectIdPipe</code> para la búsqueda de un libro</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Uso de <code>ParseObjectIdPipe</code> para la modificación de un libro</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="3"></i><b>3</b></td>
+<td>Uso de <code>ParseObjectIdPipe</code> para la eliminación de un libro
+:numbered!:</td>
+</tr>
+</table>
+</div>
+</div>
+</div>
+<div class="sect1">
+<h2 id="trueanexo-i-configuración-de-mongodb-local-con-docker-compose"><a class="anchor" href="#trueanexo-i-configuración-de-mongodb-local-con-docker-compose"></a>7. Anexo I. Configuración de MongoDB local con Docker Compose</h2>
+<div class="sectionbody">
+<div class="paragraph">
+<p>Para trabajar localmente con MongoDB necesitamos una base de datos a la que conectarnos. Para no tener que complicarnos con instalaciones y no acoplar el desarrollo a nuestro equipo, en este tutorial utilizaremos una instalación local de MongoDB con Docker Compose. Trabajaremos con una base de datos denominada <code>tutorial</code> que guarda los datos en un directorio <code>mongo-data</code> respecto al directorio en el que esté el archivo <code>docker-compose.yml</code>. Esta base de datos debe coincidir con la que se use a la hora de establecer la conexión. En el tutorial hemos realizado la conexión en <code>app.module.ts</code>.</p>
 </div>
 <div class="listingblock">
 <div class="title">Archivo <code>docker-compose.yml</code></div>
@@ -2294,56 +2472,10 @@ services:
 </div>
 </div>
 </div>
-<div class="sect1">
-<h2 id="trueanexo-ii-validaciones-en-mongoose"><a class="anchor" href="#trueanexo-ii-validaciones-en-mongoose"></a>Anexo II. Validaciones en Mongoose</h2>
-<div class="sectionbody">
-<div class="paragraph">
-<p><a href="https://mongoosejs.com/docs/validation.html">documentación oficial</a></p>
-</div>
-</div>
-</div>
-<div class="sect1">
-<h2 id="trueanexo-iii-rechazo-de-peticiones-con-_id-inválido"><a class="anchor" href="#trueanexo-iii-rechazo-de-peticiones-con-_id-inválido"></a>Anexo III. Rechazo de peticiones con <code>_id</code> inválido</h2>
-<div class="sectionbody">
-<div class="listingblock">
-<div class="title">Archivo <code>utilities/parse-object-id-pipe.pipe.ts</code></div>
-<div class="content">
-<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs">import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
-import mongoose from 'mongoose';
-@Injectable()
-export class ParseObjectIdPipe
-  implements PipeTransform&lt;any, mongoose.Types.ObjectId&gt;
-{
-  transform(value: any): mongoose.Types.ObjectId {
-    const validObjectId: boolean = mongoose.isObjectIdOrHexString(value);
-    if (!validObjectId) {
-      throw new BadRequestException('Invalid ObjectId');
-    }
-    return value;
-  }
-}</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>Uso del pipe en los controladores</p>
-</div>
-<div class="listingblock">
-<div class="content">
-<pre class="highlightjs highlight"><code data-lang="ts" class="language-ts hljs"> @Get(':id')
-  findOne(@Param('id', ParseObjectIdPipe) id: string) { <i class="conum" data-value="1"></i><b>(1)</b>
-    return this.booksService.findOne(id);
-  }</code></pre>
-</div>
-</div>
-<div class="paragraph">
-<p>&lt;1&gt;</p>
-</div>
-</div>
-</div>
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-04-16 19:51:31 +0200
+Last updated 2022-04-17 06:20:01 +0200
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/github.min.css">

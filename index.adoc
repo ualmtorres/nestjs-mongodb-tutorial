@@ -1095,7 +1095,23 @@ El resultado devuelto será similar a este, en el que se muestran los datos guar
 }
 ----
 
-Tras la inserción podemos probar que se recuperan correctamente los usuarios con el endpoint `GET /users`. Para probar el endpoint que devuelve un usuario concreto, desplegaremos en Swagger UI el endpoint `GET /users/{:id}`, pulsamemos `Try it out` para probar el endpoint e introduciremos el `_id` del usuario creado (`johndoe`). Tras pulsar `Execute` vemos que se recupera correctamente el usuario.
+Insertaremos también otro usuario a modo de prueba con estos valores.
+
+[source, json]
+----
+{
+  "_id": "marysmith",
+  "name": "Mary Smith",
+  "email": "marysmith@gmail.com",
+  "country": "France"
+}
+----
+
+Tras la inserción podemos probar que se recuperan correctamente los usuarios con el endpoint `GET /users`. 
+
+image::all-users.png[]
+
+Para probar el endpoint que devuelve un usuario concreto, desplegaremos en Swagger UI el endpoint `GET /users/{:id}`, pulsamemos `Try it out` para probar el endpoint e introduciremos el `_id` del usuario creado (`johndoe`). Tras pulsar `Execute` vemos que se recupera correctamente el usuario.
 
 image::user-findone.png[]
 
@@ -1134,12 +1150,121 @@ Si lanzamos la petición con el `_id` del usuario a modificar, los cambios se al
 
 Para eliminar un usuario basta con usar el endpoint `DELETE /users/{id}` con el `_id` del usuario a eliminar.
 
+## Rechazo de peticiones con `_id` inválido
+
+Si en colecciones con `_id` de tipo `ObjectID` de MongoDB realizamos operaciones de búsqueda, actualización o eliminación con un `id` con formato inválido se producira un error. Si hacemos la prueba con el endpoint `GET /books/{id}` y le pasamos un `id` que no tenga el formato hexadecimal de 24 caracteres del los identificadores de MongoDB (p.e. `1`), obtendremos un error.
+
+image::error-id.png[]
+
+Una solución para este problema es usar un _pipe_ de NestJS para que compruebe si el identificador pasado en la URL es correcto. Si no es correcto interceptará el error y lo informará. Si es correcto, el _pipe_ devuelve el valor de entrada tal cual.
+
+El _pipe_ se apoya en el método `isObjectIdOrHexString` del paquete `mongoose`. que devuelve `true` si es un identificador MongoDB válido o `false` en caso contrario.
+
+A continuación se muestra el código del _pipe_, que hemos colocado en la carpeta `utilities`.
+
+.Archivo `utilities/parse-object-id-pipe.pipe.ts`
+
+[source, ts]
+----
+import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
+import mongoose from 'mongoose';
+
+@Injectable()
+export class ParseObjectIdPipe
+  implements PipeTransform<any, mongoose.Types.ObjectId>
+{
+  transform(value: any): mongoose.Types.ObjectId {
+    const validObjectId: boolean = mongoose.isObjectIdOrHexString(value); <1>
+    if (!validObjectId) {
+      throw new BadRequestException('Invalid ObjectId'); <2>
+    }
+    return value; <3>
+  }
+}
+----
+<1> Determinar si el identificador es válido para MongoDB
+<2> Lanzar una excepción si el identificador no es válido
+<3> Devolver el valor si el identificador es válido
+Uso del pipe en los controladores
+
+El _pipe_ `ParseObjectIdPipe` definido se usará en los controladores que tengan endpoints que acepten identificadores MongoDB. El _pipe_ se colocará después del parámetro `id` leído en la URL.
+
+[source, ts]
+----
+ @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string) { <1>
+    return this.booksService.findOne(id);
+  }
+----
+<1> Uso del _pipe_ tras leer el `id` de la URL.
+
+Si ahora volvemos a lanzar la petición, ya no provocará un error en la aplicación y nos informará del error adecuadamente.
+
+image::invalid-objectid.png[]
+
+.Archivo `src/books/books.controller.ts`
+[source, ts]
+----
+import { Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+} from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
+import { Request } from 'express';
+import { BooksService } from './books.service';
+import { CreateBookDto } from './dto/create-book.dto';
+import { UpdateBookDto } from './dto/update-book.dto';
+import { ParseObjectIdPipe } from '../utilities/parse-object-id-pipe.pipe';
+
+@Controller('books')
+@ApiTags('book')
+export class BooksController {
+  constructor(private readonly booksService: BooksService) {}
+
+  @Post()
+  create(@Body() createBookDto: CreateBookDto) {
+    return this.booksService.create(createBookDto);
+  }
+
+  @Get()
+  findAll(@Req() request: Request) {
+    return this.booksService.findAll(request);
+  }
+
+  @Get(':id')
+  findOne(@Param('id', ParseObjectIdPipe) id: string) { <1>
+    return this.booksService.findOne(id);
+  }
+
+  @Patch(':id')
+  update(
+    @Param('id', ParseObjectIdPipe) id: string, <2>
+    @Body() updateBookDto: UpdateBookDto,
+  ) {
+    return this.booksService.update(id, updateBookDto);
+  }
+
+  @Delete(':id')
+  remove(@Param('id', ParseObjectIdPipe) id: string) { <3>
+    return this.booksService.remove(id);
+  }
+}
+----
+<1> Uso de `ParseObjectIdPipe` para la búsqueda de un libro
+<2> Uso de `ParseObjectIdPipe` para la modificación de un libro
+<3> Uso de `ParseObjectIdPipe` para la eliminación de un libro
 // (Entrar en modo no numerado de apartados)
 :numbered!: 
 
 ## Anexo I. Configuración de MongoDB local con Docker Compose
 
-Para trabajar localmente con MongoDB necesitamos una base de datos a la que conectarnos. Para no tener que complicarnos con instalaciones y no acoplar el desarrollo a nuestro equipo utilizaremos una instalación local de MongoDB con Docker Compose. Trabajaremos con una base de datos denominada `tutorial` que guarda los datos en un directorio `mongo-data` respecto al directorio en el que esté el archivo `docker-compose.yml`
+Para trabajar localmente con MongoDB necesitamos una base de datos a la que conectarnos. Para no tener que complicarnos con instalaciones y no acoplar el desarrollo a nuestro equipo, en este tutorial utilizaremos una instalación local de MongoDB con Docker Compose. Trabajaremos con una base de datos denominada `tutorial` que guarda los datos en un directorio `mongo-data` respecto al directorio en el que esté el archivo `docker-compose.yml`. Esta base de datos debe coincidir con la que se use a la hora de establecer la conexión. En el tutorial hemos realizado la conexión en `app.module.ts`.
 
 .Archivo `docker-compose.yml`
 ----
@@ -1157,39 +1282,3 @@ services:
       - ./mongo-data:/data/db
 ----
 
-## Anexo II. Validaciones en Mongoose
-
-https://mongoosejs.com/docs/validation.html[documentación oficial]
-
-## Anexo III. Rechazo de peticiones con `_id` inválido
-
-.Archivo `utilities/parse-object-id-pipe.pipe.ts`
-
-[source, ts]
-----
-import { PipeTransform, Injectable, BadRequestException } from '@nestjs/common';
-import mongoose from 'mongoose';
-@Injectable()
-export class ParseObjectIdPipe
-  implements PipeTransform<any, mongoose.Types.ObjectId>
-{
-  transform(value: any): mongoose.Types.ObjectId {
-    const validObjectId: boolean = mongoose.isObjectIdOrHexString(value);
-    if (!validObjectId) {
-      throw new BadRequestException('Invalid ObjectId');
-    }
-    return value;
-  }
-}
-----
-
-Uso del pipe en los controladores
-
-[source, ts]
-----
- @Get(':id')
-  findOne(@Param('id', ParseObjectIdPipe) id: string) { <1>
-    return this.booksService.findOne(id);
-  }
-----
-<1> 
