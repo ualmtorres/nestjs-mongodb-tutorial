@@ -3021,7 +3021,7 @@ export class BooksController {
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/añadir-comentario-predeterminado.png" alt="añadir comentario predeterminado">
+<img src="./images/agregar-comentario-predeterminado.png" alt="agregar comentario predeterminado">
 </div>
 </div>
 <div class="paragraph">
@@ -3080,7 +3080,7 @@ export class BooksController {
 </div>
 <div class="imageblock">
 <div class="content">
-<img src="./images/añadir-segundo-comentario.png" alt="añadir segundo comentario">
+<img src="./images/agregar-segundo-comentario.png" alt="agregar segundo comentario">
 </div>
 </div>
 <div class="paragraph">
@@ -3213,6 +3213,68 @@ export class BooksService {
 </tr>
 </table>
 </div>
+<div class="paragraph">
+<p>Si ahora recuperáramos los libros con <code>GET /books</code> veríamos que los datos de los comentarios han sido enriquecidos con los datos de los usuarios.</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code data-lang="json" class="language-json hljs">[
+  {
+    "_id": "62594f8ddae1eebf6c6c209c",
+    "genre": "Web Development",
+    "description": "JavaScript frameworks go in and out of style very quickly as web technologies change and grow. Nest.js is a good starting point for many developers that are looking to use a modern web framework because it uses a language that is very similar to that of the most used language on the web to this day, JavaScript...",
+    "author": "Jay Bell",
+    "pages": 350,
+    "image_url": "https://m.media-amazon.com/images/I/41fveBeDWmL._SY346_.jpg",
+    "keywords": [
+      "NestJS",
+      "REST API"
+    ],
+    "__v": 2,
+    "comments": [
+      {
+        "title": "Esperaba más",
+        "stars": 3,
+        "comment": "Nisi officia fugiat id nulla laboris ex. Sit laboris culpa occaecat occaecat aliquip dolor non excepteur reprehenderit.",
+        "username": { <i class="conum" data-value="1"></i><b>(1)</b>
+          "_id": "johndoe",
+          "name": "John Doe",
+          "email": "johndoe@gmail.com",
+          "country": "Italy",
+          "__v": 0
+        },
+        "_id": "625bade7c73a12ec6c5c9c16"
+      },
+      {
+        "title": "Me encantó",
+        "stars": 5,
+        "comment": "Non consequat laborum pariatur et tempor fugiat excepteur. Incididunt minim voluptate nostrud Lorem ullamco consectetur sint veniam amet non aliqua proident. Cillum reprehenderit veniam nulla ex eiusmod id sit tempor. Consectetur nostrud Lorem duis culpa sit incididunt aliqua.",
+        "username": { <i class="conum" data-value="2"></i><b>(2)</b>
+          "_id": "marysmith",
+          "name": "Mary Smith",
+          "email": "marysmith@gmail.com",
+          "country": "France",
+          "__v": 0
+        },
+        "_id": "625baedcc73a12ec6c5c9c19"
+      }
+    ]
+  }
+]</code></pre>
+</div>
+</div>
+<div class="colist arabic">
+<table>
+<tr>
+<td><i class="conum" data-value="1"></i><b>1</b></td>
+<td>Comentario enriquecido con los datos de usuario</td>
+</tr>
+<tr>
+<td><i class="conum" data-value="2"></i><b>2</b></td>
+<td>Comentario enriquecido con los datos de usuario</td>
+</tr>
+</table>
+</div>
 </div>
 </div>
 </div>
@@ -3244,7 +3306,7 @@ services:
 </div>
 <div id="footer">
 <div id="footer-text">
-Last updated 2022-04-17 15:04:08 +0200
+Last updated 2022-04-17 17:05:53 +0200
 </div>
 </div>
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/highlight.js/9.15.6/styles/github.min.css">
